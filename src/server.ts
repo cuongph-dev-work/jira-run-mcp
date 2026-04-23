@@ -199,7 +199,8 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
         .describe('Duration: use Nd (days=8h), Nh, Nm. Examples: "2h", "1d 4h 30m"'),
       startDate: z
         .string()
-        .describe("Date of work in yyyy-MM-dd format"),
+        .optional()
+        .describe("Date of work in yyyy-MM-dd format (defaults to today)"),
       comment: z
         .string()
         .optional()

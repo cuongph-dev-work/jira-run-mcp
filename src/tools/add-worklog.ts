@@ -93,7 +93,9 @@ export const addWorklogSchema = z.object({
     ),
   startDate: z
     .string()
-    .regex(DATE_REGEX, "startDate must be in yyyy-MM-dd format"),
+    .regex(DATE_REGEX, "startDate must be in yyyy-MM-dd format")
+    .optional()
+    .describe("Date of work in yyyy-MM-dd format (defaults to today)"),
   comment: z
     .string()
     .optional()
@@ -155,12 +157,14 @@ export async function handleAddWorklog(
   const {
     issueKey,
     timeSpent,
-    startDate,
     comment,
     process,
     typeOfWork,
     includeNonWorkingDays,
   } = parsed.data;
+
+  // Default startDate to today (yyyy-MM-dd)
+  const startDate = parsed.data.startDate ?? new Date().toISOString().slice(0, 10);
 
   // --- Parse duration ---
   let timeSpentSeconds: number;
