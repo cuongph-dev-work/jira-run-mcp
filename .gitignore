@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+# Environment — never commit real values
+.env
+
+# Jira session state — contains live browser cookies
+.jira/session.json
+
+# Editor
+.DS_Store
+*.log
