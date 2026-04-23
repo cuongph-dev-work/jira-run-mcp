@@ -10,3 +10,5 @@ dist/
 # Editor
 .DS_Store
 *.log
+.gitnexus
+.serena

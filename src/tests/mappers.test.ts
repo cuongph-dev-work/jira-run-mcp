@@ -94,6 +94,7 @@ describe("mapIssueSummary", () => {
     // Full-issue-only fields should not exist
     expect((result as unknown as Record<string, unknown>)["description"]).toBeUndefined();
     expect((result as unknown as Record<string, unknown>)["reporter"]).toBeUndefined();
-    expect((result as unknown as Record<string, unknown>)["issueType"]).toBeUndefined();
+    // issueType IS included in summary
+    expect(result.issueType).toBe("Bug");
   });
 });

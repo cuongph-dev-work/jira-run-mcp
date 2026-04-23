@@ -35,9 +35,76 @@ function createMcpServer(): McpServer {
   // Tool: jira_search_issues
   server.tool(
     "jira_search_issues",
-    "Execute a JQL query against Jira and return a compact list of matching issues",
+    `Execute a JQL query against Jira and return a compact list of matching issues.
+
+JQL SYNTAX RULES (follow strictly):
+- Time tracking fields (timespent, timeestimate, originalEstimate): use natural duration strings like "65h", "3d 4h", "30m" — NEVER convert to seconds or minutes yourself.
+  Example: timespent > "65h"  (correct) | timespent > 234000 (wrong)
+
+SCRIPTRUNNER JQL FUNCTIONS (available via issueFunction field, full docs in docs/jql-functions-scriptrunner.md):
+
+ISSUE LINKS:
+- issueFunction in hasLinks("blocks")                         — issues with "blocks" links
+- issueFunction in hasLinkType("Blocks")                      — link type (any direction)
+- issueFunction in linkedIssuesOf("status = Open", "blocks")  — linked TO matching issues
+- issueFunction in linkedIssuesOfRecursive("issue = X-1")     — recursively linked
+- issueFunction in linkedIssuesOfRecursiveLimited("project = X", 2) — recursive with depth limit
+- issueFunction in epicsOf("resolution = unresolved")         — epics with unresolved children
+- issueFunction in issuesInEpics("status = 'To Do'")          — issues inside matching epics
+
+SUB-TASKS:
+- issueFunction in hasSubtasks()                              — parent issues with subtasks
+- issueFunction in subtasksOf("assignee = currentUser()")     — subtasks of matching issues
+- issueFunction in parentsOf("status = Open")                 — parents of matching subtasks
+
+DATES:
+- issueFunction in dateCompare("", "resolutionDate > dueDate") — compare two date fields (supports +Nd, +Nw time windows)
+- issueFunction in lastUpdated("by currentUser()")            — last updated by user/role/group
+
+CALCULATIONS:
+- issueFunction in expression("", "timespent > originalestimate")              — compare numeric/duration/date fields
+- issueFunction in expression("resolution is empty", "now() + fromTimeTracking(remainingestimate) > duedate") — will miss due date
+- issueFunction in aggregateExpression("Total", "originalEstimate.sum()")      — aggregate calculations (.sum(), .average(), .count())
+
+COMMENTS:
+- issueFunction in hasComments()                              — issues with any comments
+- issueFunction in hasComments('+5')                          — more than 5 comments
+- issueFunction in commented("after -7d by currentUser()")    — commented by user/date/role
+- issueFunction not in lastComment("inRole Developers")       — last comment NOT by role
+
+ATTACHMENTS:
+- issueFunction in hasAttachments("pdf")                      — issues with PDF attachments
+- issueFunction in fileAttached("after -1w by currentUser()") — attachments by user/date
+
+WORKLOGS:
+- issueFunction in workLogged("after startOfMonth() by currentUser()") — work logged by user/role/date
+
+USERS:
+- assignee in inactiveUsers()                                 — inactive users
+- issueFunction in memberOfRole("Reporter", "Administrators") — user in role
+
+MATCH/REGEX:
+- issueFunction in issueFieldMatch("project = X", "description", "ABC\\\\d{4}") — regex match on fields
+- issueFunction in issueFieldExactMatch("project = X", "Error Code", "ERR-404") — exact match
+- project in projectMatch("^Test.*")                          — project name regex
+
+VERSIONS:
+- fixVersion in releaseDate("after now() before 10d")         — by release date
+- fixVersion in overdue()                                     — overdue versions
+- fixVersion in archivedVersions()                            — archived versions
+
+PROJECTS:
+- project in myProjects()                                     — current user's projects
+- project in recentProjects()                                 — recently viewed projects
+
+SPRINT:
+- issueFunction in addedAfterSprintStart("project = X", "Sprint 1")   — added after sprint start
+- issueFunction in completeInSprint("project = X", "Sprint 1")        — completed in sprint
+- issueFunction in incompleteInSprint("project = X", "Sprint 1")      — incomplete in sprint
+
+DATE FORMATS: yyyy/MM/dd, period (-5d, -1w), date functions (startOfMonth(), endOfMonth(), startOfDay(), now(), lastLogin()).`,
     {
-      jql: z.string().describe("JQL query string, e.g. 'project = PROJ AND status = Open'"),
+      jql: z.string().describe("JQL query string. For time tracking use natural duration strings like '65h' not seconds. ScriptRunner functions use: issueFunction in <fn>(<subquery>)."),
       limit: z
         .number()
         .int()
@@ -46,6 +113,28 @@ function createMcpServer(): McpServer {
         .optional()
         .default(10)
         .describe("Maximum number of results to return (1–50, default 10)"),
+      startAt: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .default(0)
+        .describe("0-based index of the first result to return. Use with limit for pagination. E.g. startAt=50, limit=50 returns results 51–100."),
+      orderBy: z
+        .enum([
+          "summary", "issuetype", "issuekey", "created", "updated",
+          "timespent", "originalEstimate", "remainingEstimate", "priority",
+          "dueDate", "assignee", "status", "typeOfWork", "defectOwner",
+          "planStartDate", "defectOrigin", "actualStartDate", "severity",
+          "actualEndDate", "percentDone"
+        ] as const)
+        .optional()
+        .describe("Field to sort by. Custom fields use cf[id] syntax internally."),
+      order: z
+        .enum(["ASC", "DESC"])
+        .optional()
+        .default("DESC")
+        .describe("Sort order: ASC or DESC (default DESC)"),
     },
     async (input) => {
       return handleSearchIssues(input, config);

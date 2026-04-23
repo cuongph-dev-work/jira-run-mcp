@@ -44,19 +44,115 @@ export interface SessionCookies {
 // Jira output shapes — stable, normalized, free of Jira internals
 // ---------------------------------------------------------------------------
 
-/** Full issue detail returned by jira_get_issue */
-export interface JiraIssue {
+/** Compact sub-task reference (returned inside parent issue) */
+export interface JiraSubtask {
   key: string;
   summary: string;
-  description: string | null;
   status: string;
+  issueType: string;
+  priority: string | null;
+}
+
+/** Time tracking info (jira_get_issue) */
+export interface JiraTimeTracking {
+  /** Original estimate, e.g. "1h" */
+  originalEstimate: string | null;
+  /** Remaining estimate, e.g. "30m" */
+  remainingEstimate: string | null;
+  /** Time already logged, e.g. "30m" */
+  timeSpent: string | null;
+}
+
+/** Attachment metadata returned by jira_get_issue */
+export interface JiraAttachment {
+  filename: string;
+  mimeType: string;
+  /** File size in bytes */
+  size: number;
+  /** ISO 8601 upload timestamp */
+  created: string;
+  /** Display name of the uploader */
+  author: string | null;
+  /** Direct download URL */
+  downloadUrl: string;
+  /** Extracted text content (only for readable types, filled by handler) */
+  content?: string;
+}
+
+/** Full issue detail returned by jira_get_issue */
+export interface JiraIssue {
+  // --- Core identity ---
+  key: string;
+  summary: string;
+  url: string;
+
+  // --- Classification ---
+  issueType: string;
+  status: string;
+  resolution: string | null;
+  priority: string | null;
+  labels: string[];
+  components: string[];
+  affectsVersions: string[];
+  fixVersions: string[];
+
+  // --- People ---
   assignee: string | null;
   reporter: string | null;
-  priority: string | null;
-  issueType: string;
+  /** customfield_10320 — Defect Owner */
+  defectOwner: string | null;
+
+  // --- Dates ---
   created: string;
   updated: string;
-  url: string;
+  dueDate: string | null;
+  /** customfield_10313 — Plan Start Date */
+  planStartDate: string | null;
+  /** customfield_10315 — Actual Start Date */
+  actualStartDate: string | null;
+  /** customfield_10316 — Actual End Date */
+  actualEndDate: string | null;
+
+  // --- Time tracking ---
+  timeTracking: JiraTimeTracking;
+
+  // --- Relations ---
+  /** customfield_10201 — Epic Link */
+  epicLink: string | null;
+  /** customfield_10203 — Epic Name (only set when the issue is an Epic) */
+  epicName: string | null;
+  /** Parent issue key (when this issue is itself a sub-task) */
+  parent: string | null;
+  /** Sub-tasks belonging to this issue */
+  subtasks: JiraSubtask[];
+
+  // --- Bug / defect custom fields ---
+  /** customfield_10339 — Project Stages */
+  projectStages: string | null;
+  /** customfield_10323 — Defect Type */
+  defectType: string | null;
+  /** customfield_10336 — Defect Origin */
+  defectOrigin: string | null;
+  /** customfield_10324 — Cause Category */
+  causeCategory: string | null;
+  /** customfield_10326 — Severity */
+  severity: string | null;
+  /** customfield_10335 — Degrade (Yes/No) */
+  degrade: string | null;
+  /** customfield_10325 — Impact Assessment */
+  impactAssessment: string | null;
+  /** customfield_10331 — Cause Analysis */
+  causeAnalysis: string | null;
+  /** customfield_10333 — Action */
+  action: string | null;
+  /** customfield_10810 — DoD (Definition of Done) */
+  dod: string | null;
+
+  // --- Attachments ---
+  attachments: JiraAttachment[];
+
+  // --- Description ---
+  description: string | null;
 }
 
 /** Compact issue summary returned inside jira_search_issues */
@@ -64,10 +160,36 @@ export interface JiraIssueSummary {
   key: string;
   summary: string;
   status: string;
+  issueType: string;
   assignee: string | null;
   priority: string | null;
+  created: string;
   updated: string;
+  dueDate: string | null;
   url: string;
+
+  // Time tracking
+  originalEstimate: string | null;
+  remainingEstimate: string | null;
+  timeSpent: string | null;
+
+  // Custom fields (known IDs)
+  /** customfield_10320 — Defect Owner */
+  defectOwner: string | null;
+  /** customfield_10313 — Plan Start Date */
+  planStartDate: string | null;
+  /** customfield_10315 — Actual Start Date */
+  actualStartDate: string | null;
+  /** customfield_10316 — Actual End Date */
+  actualEndDate: string | null;
+  /** customfield_10326 — Severity */
+  severity: string | null;
+  /** customfield_10336 — Defect Origin */
+  defectOrigin: string | null;
+  /** customfield_10338 — % Done */
+  percentDone: string | null;
+  /** customfield_10340 — Type of Work */
+  typeOfWork: string | null;
 }
 
 /** Top-level result from jira_search_issues */

@@ -57,10 +57,11 @@ export class JiraHttpClient {
   // jira_search_issues
   // ---------------------------------------------------------------------------
 
-  async searchIssues(jql: string, limit: number): Promise<JiraSearchResult> {
+  async searchIssues(jql: string, limit: number, startAt: number = 0): Promise<JiraSearchResult> {
     const url = searchUrl(this.baseUrl);
     const res = await this.http.post(url, {
       jql,
+      startAt,
       maxResults: limit,
       fields: SEARCH_FIELDS,
     });

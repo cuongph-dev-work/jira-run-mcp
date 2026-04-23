@@ -21,20 +21,58 @@ export function searchUrl(baseUrl: string): string {
   return `${baseUrl}${API_BASE}/search`;
 }
 
+import { CUSTOM_FIELD } from "./constants.js";
+
 /**
  * Fields to request for a full issue (jira_get_issue).
- * Keeping this minimal prevents noisy custom-field payloads.
+ *
+ * Standard fields + all custom fields that the internal Jira instance uses.
  */
 export const ISSUE_FIELDS: string[] = [
+  // Standard
   "summary",
   "description",
   "status",
+  "resolution",
   "assignee",
   "reporter",
   "priority",
   "issuetype",
+  "labels",
+  "components",
+  "versions",          // affectsVersions
+  "fixVersions",
   "created",
   "updated",
+  "duedate",
+  "timetracking",
+  "subtasks",
+  "parent",
+  "attachment",
+
+  // Custom — People
+  CUSTOM_FIELD.DEFECT_OWNER,
+
+  // Custom — Dates
+  CUSTOM_FIELD.PLAN_START_DATE,
+  CUSTOM_FIELD.ACTUAL_START_DATE,
+  CUSTOM_FIELD.ACTUAL_END_DATE,
+
+  // Custom — Relations
+  CUSTOM_FIELD.EPIC_LINK,
+  CUSTOM_FIELD.EPIC_NAME,
+
+  // Custom — Bug / Defect
+  CUSTOM_FIELD.PROJECT_STAGES,
+  CUSTOM_FIELD.DEFECT_TYPE,
+  CUSTOM_FIELD.DEFECT_ORIGIN,
+  CUSTOM_FIELD.CAUSE_CATEGORY,
+  CUSTOM_FIELD.SEVERITY,
+  CUSTOM_FIELD.DEGRADE,
+  CUSTOM_FIELD.IMPACT_ASSESSMENT,
+  CUSTOM_FIELD.CAUSE_ANALYSIS,
+  CUSTOM_FIELD.ACTION,
+  CUSTOM_FIELD.DOD,
 ];
 
 /**
@@ -43,7 +81,27 @@ export const ISSUE_FIELDS: string[] = [
 export const SEARCH_FIELDS: string[] = [
   "summary",
   "status",
+  "issuetype",
   "assignee",
   "priority",
+  "created",
   "updated",
+  "duedate",
+  "timetracking",
+
+  // Custom — People
+  CUSTOM_FIELD.DEFECT_OWNER,
+
+  // Custom — Dates
+  CUSTOM_FIELD.PLAN_START_DATE,
+  CUSTOM_FIELD.ACTUAL_START_DATE,
+  CUSTOM_FIELD.ACTUAL_END_DATE,
+
+  // Custom — Bug / Defect
+  CUSTOM_FIELD.SEVERITY,
+  CUSTOM_FIELD.DEFECT_ORIGIN,
+
+  // Custom — Work/Progress
+  CUSTOM_FIELD.PERCENT_DONE,
+  CUSTOM_FIELD.TYPE_OF_WORK,
 ];
