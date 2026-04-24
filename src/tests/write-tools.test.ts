@@ -37,6 +37,7 @@ import { handleUpdateComment } from "../tools/update-comment.js";
 import { handleUpdateIssueFields } from "../tools/update-issue-fields.js";
 import { handleUpdateWorklog } from "../tools/update-worklog.js";
 import { handleValidateIssueUpdate } from "../tools/validate-issue-update.js";
+import { handleUploadAttachmentContent } from "../tools/upload-attachment-content.js";
 import {
   buildUpdateIssuePayload,
   UPDATEABLE_FIELDS,
@@ -718,3 +719,178 @@ describe("transition/comment tool handlers", () => {
     expect(prioritiesResult.content[0].text).toContain("Medium");
   });
 });
+
+describe("upload attachment content tool handler", () => {
+  const mockConfig = {
+    JIRA_BASE_URL: "https://jira.example.com",
+    JIRA_SESSION_FILE: ".jira/session.json",
+    JIRA_VALIDATE_PATH: "/rest/api/2/myself",
+    MCP_PORT: 3000,
+    LOG_LEVEL: "info",
+    PLAYWRIGHT_HEADLESS: false,
+    PLAYWRIGHT_BROWSER: "chromium" as const,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uploads utf8 text content and formats result table", async () => {
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      {
+        id: "60001",
+        filename: "report.md",
+        size: 256,
+        mimeType: "text/markdown",
+        url: "https://jira.example.com/secure/attachment/60001/report.md",
+      },
+    ]);
+
+    const result = await handleUploadAttachmentContent(
+      {
+        issueKey: "DNIEM-42",
+        filename: "report.md",
+        content: "# Bug Report\n\nThis is the report.",
+        encoding: "utf8",
+      },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("Attachment uploaded");
+    expect(result.content[0].text).toContain("report.md");
+    expect(result.content[0].text).toContain("60001");
+    expect(result.content[0].text).toContain("256 B");
+    expect(result.content[0].text).toContain("DNIEM-42");
+  });
+
+  it("uploads base64-encoded content correctly", async () => {
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    const spy = vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      {
+        id: "60002",
+        filename: "data.json",
+        size: 64,
+        mimeType: "application/json",
+        url: "https://jira.example.com/secure/attachment/60002/data.json",
+      },
+    ]);
+
+    const base64Content = Buffer.from('{"key":"value"}').toString("base64");
+
+    const result = await handleUploadAttachmentContent(
+      {
+        issueKey: "DNIEM-42",
+        filename: "data.json",
+        content: base64Content,
+        encoding: "base64",
+      },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("data.json");
+    // Verify the buffer was decoded from base64 before upload
+    const calledBuffer = spy.mock.calls[0]?.[1] as Buffer;
+    expect(calledBuffer.toString("utf8")).toBe('{"key":"value"}');
+  });
+
+  it("infers MIME type from filename extension when not provided", async () => {
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    const spy = vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      {
+        id: "60003",
+        filename: "export.csv",
+        size: 128,
+        mimeType: "text/csv",
+        url: "https://jira.example.com/secure/attachment/60003/export.csv",
+      },
+    ]);
+
+    await handleUploadAttachmentContent(
+      {
+        issueKey: "DNIEM-42",
+        filename: "export.csv",
+        content: "col1,col2\nval1,val2",
+        encoding: "utf8",
+      },
+      mockConfig as never
+    );
+
+    // mimeType arg passed to client should be inferred as text/csv
+    expect(spy.mock.calls[0]?.[3]).toBe("text/csv");
+  });
+
+  it("respects explicit mimeType override", async () => {
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    const spy = vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      {
+        id: "60004",
+        filename: "dump.log",
+        size: 512,
+        mimeType: "text/x-log",
+        url: "https://jira.example.com/secure/attachment/60004/dump.log",
+      },
+    ]);
+
+    await handleUploadAttachmentContent(
+      {
+        issueKey: "DNIEM-42",
+        filename: "dump.log",
+        content: "ERROR: something went wrong",
+        mimeType: "text/x-log",
+      },
+      mockConfig as never
+    );
+
+    expect(spy.mock.calls[0]?.[3]).toBe("text/x-log");
+  });
+
+  it("rejects invalid issueKey format", async () => {
+    const result = await handleUploadAttachmentContent(
+      { issueKey: "invalid", filename: "file.txt", content: "data" },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("Invalid input");
+  });
+
+  it("rejects filename without extension", async () => {
+    const result = await handleUploadAttachmentContent(
+      { issueKey: "DNIEM-42", filename: "noextension", content: "data" },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("Invalid input");
+  });
+
+  it("formats file sizes correctly", async () => {
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      { id: "60005", filename: "big.txt", size: 1536, mimeType: "text/plain", url: null },
+    ]);
+
+    const result = await handleUploadAttachmentContent(
+      { issueKey: "DNIEM-42", filename: "big.txt", content: "x".repeat(1536) },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBeUndefined();
+    // 1536 bytes = 1.5 KB
+    expect(result.content[0].text).toContain("1.5 KB");
+  });
+});
+

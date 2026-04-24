@@ -493,6 +493,34 @@ export class JiraHttpClient {
     return normalizeAttachmentUploadResponse(res.data);
   }
 
+  /**
+   * Uploads an attachment from an in-memory Buffer.
+   * Used by jira_upload_attachment_content to attach AI-generated content
+   * (plain text, base64-decoded bytes, etc.) without writing to disk.
+   */
+  async uploadAttachmentFromBuffer(
+    issueKey: string,
+    buffer: Buffer,
+    filename: string,
+    mimeType: string
+  ): Promise<JiraAttachmentUploadResult[]> {
+    const url = issueAttachmentUrl(this.baseUrl, issueKey);
+    const form = new FormData();
+    form.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType }), filename);
+
+    const res = await this.http.post(url, form, {
+      headers: {
+        "X-Atlassian-Token": "no-check",
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    this.checkForAuthFailure(res.status, url, res.data);
+    this.assertOk(res.status, url, res.data);
+
+    return normalizeAttachmentUploadResponse(res.data);
+  }
+
   async getProjects(): Promise<JiraProject[]> {
     const url = projectsUrl(this.baseUrl);
     const res = await this.http.get(url);

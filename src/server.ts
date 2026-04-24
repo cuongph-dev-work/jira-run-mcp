@@ -7,6 +7,7 @@ import { config } from "./config.js";
 import { ISSUE_TYPE } from "./jira/constants.js";
 import { handleAddComment } from "./tools/add-comment.js";
 import { handleAddAttachment } from "./tools/add-attachment.js";
+import { handleUploadAttachmentContent } from "./tools/upload-attachment-content.js";
 import { handleAssignIssue } from "./tools/assign-issue.js";
 import { handleBulkLinkIssues } from "./tools/bulk-link-issues.js";
 import { handleBulkTransitionIssues } from "./tools/bulk-transition-issues.js";
@@ -596,6 +597,40 @@ If the issue has subtasks, set deleteSubtasks=true or Jira will reject the reque
     },
     async (input) => {
       return handleAddAttachment(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_upload_attachment_content",
+    `Upload in-memory content as a Jira issue attachment — no local file needed.
+
+Use this when you have the file content as a string (generated report, CSV, JSON, etc.) and want to attach it directly to an issue without saving to disk.
+
+ENCODING:
+- utf8 (default): content is a plain text string.
+- base64: content is a base64-encoded string (use for binary files or when the content comes from a base64 source).
+
+FILENAME must include a file extension (e.g. "report.md", "data.csv"). MIME type is inferred from the extension if not provided.
+
+RETURNS: filename, size, MIME type, and attachment ID for each uploaded file.`,
+    {
+      issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
+      filename: z
+        .string()
+        .describe("Attachment filename with extension, e.g. \"report.md\", \"data.csv\"."),
+      content: z.string().describe("File content as a plain text string (utf8) or base64-encoded string."),
+      encoding: z
+        .enum(["utf8", "base64"])
+        .optional()
+        .default("utf8")
+        .describe("Content encoding: utf8 (default) for plain text, base64 for binary/encoded content."),
+      mimeType: z
+        .string()
+        .optional()
+        .describe("Optional MIME type override, e.g. \"text/markdown\". Inferred from filename extension if omitted."),
+    },
+    async (input) => {
+      return handleUploadAttachmentContent(input, config);
     }
   );
 
