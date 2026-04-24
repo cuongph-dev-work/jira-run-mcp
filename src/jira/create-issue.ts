@@ -1,11 +1,9 @@
 import { invalidInput } from "../errors.js";
 import type { JiraCreatedIssue } from "../types.js";
-import { normalizeAdfValue, type AdfDocument } from "./adf.js";
 import {
   FIELD,
   ISSUE_TYPE_LABEL,
   REQUIRED_FIELDS,
-  getAllowedFields,
   type IssueTypeId,
 } from "./constants.js";
 
@@ -33,15 +31,8 @@ export function validateCreateIssueFields(
       missing,
     });
   }
-
-  const allowedFields = new Set(getAllowedFields(issueTypeId));
-  const unsupported = Object.keys(fields).filter((fieldId) => !allowedFields.has(fieldId));
-  if (unsupported.length > 0) {
-    throw invalidInput(
-      `Unsupported fields for issue type ${issueTypeId}: ${unsupported.join(", ")}`,
-      { issueTypeId, unsupported }
-    );
-  }
+  // Note: no allowlist check — Jira will return a descriptive 400 for unknown fields.
+  // This allows fields from any project, not just DNIEM.
 }
 
 export function buildCreateIssuePayload(
@@ -80,20 +71,8 @@ function normalizeCreateIssueFields(fields: Record<string, unknown>): Record<str
   if (description == null) {
     return fields;
   }
-
-  return {
-    ...fields,
-    [FIELD.DESCRIPTION]: normalizeDescription(description),
-  };
-}
-
-function normalizeDescription(description: unknown): string | AdfDocument {
-  try {
-    return normalizeAdfValue(description);
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      throw invalidInput("description must be a string or a valid ADF document.", err);
-    }
-    throw err;
+  if (typeof description !== "string") {
+    throw invalidInput("description must be a plain text string.");
   }
+  return fields;
 }

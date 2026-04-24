@@ -51,7 +51,7 @@ describe("validateCreateIssueFields", () => {
     ).toThrow(/customfield_10335, customfield_10323/);
   });
 
-  it("rejects unsupported fields for the selected issue type", () => {
+  it("allows extra fields not in the DNIEM allowlist (Jira will reject if invalid)", () => {
     expect(() =>
       validateCreateIssueFields(ISSUE_TYPE.TASK, {
         [FIELD.PROJECT]: { key: "DNIEM" },
@@ -61,7 +61,7 @@ describe("validateCreateIssueFields", () => {
         [FIELD.DUE_DATE]: "2026-04-30",
         [CUSTOM_FIELD.RISK_OWNER]: { name: "Alice Smith" },
       })
-    ).toThrow(/customfield_11544/);
+    ).not.toThrow();
   });
 });
 
@@ -79,7 +79,7 @@ describe("buildCreateIssuePayload", () => {
     expect(payload.fields[FIELD.ISSUE_TYPE]).toEqual({ id: ISSUE_TYPE.BUG });
   });
 
-  it("converts a string description to a minimal ADF document", () => {
+  it("passes a string description through unchanged (no ADF conversion)", () => {
     const payload = buildCreateIssuePayload(ISSUE_TYPE.TASK, {
       [FIELD.PROJECT]: { key: "DNIEM" },
       [FIELD.SUMMARY]: "Task with plain text description",
@@ -89,43 +89,10 @@ describe("buildCreateIssuePayload", () => {
       [FIELD.DESCRIPTION]: "Line 1\nLine 2",
     });
 
-    expect(payload.fields[FIELD.DESCRIPTION]).toEqual({
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: "Line 1\nLine 2" }],
-        },
-      ],
-    });
+    expect(payload.fields[FIELD.DESCRIPTION]).toBe("Line 1\nLine 2");
   });
 
-  it("keeps a raw ADF description unchanged", () => {
-    const adfDescription = {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: "Already structured" }],
-        },
-      ],
-    };
-
-    const payload = buildCreateIssuePayload(ISSUE_TYPE.TASK, {
-      [FIELD.PROJECT]: { key: "DNIEM" },
-      [FIELD.SUMMARY]: "Task with ADF description",
-      [CUSTOM_FIELD.DIFFICULTY_LEVEL]: { id: "10400" },
-      [CUSTOM_FIELD.PROJECT_STAGES]: [{ id: "10300" }],
-      [FIELD.DUE_DATE]: "2026-04-30",
-      [FIELD.DESCRIPTION]: adfDescription,
-    });
-
-    expect(payload.fields[FIELD.DESCRIPTION]).toEqual(adfDescription);
-  });
-
-  it("rejects an invalid description type", () => {
+  it("rejects a non-string description", () => {
     expect(() =>
       buildCreateIssuePayload(ISSUE_TYPE.TASK, {
         [FIELD.PROJECT]: { key: "DNIEM" },
@@ -135,7 +102,25 @@ describe("buildCreateIssuePayload", () => {
         [FIELD.DUE_DATE]: "2026-04-30",
         [FIELD.DESCRIPTION]: 123,
       })
-    ).toThrow(/description must be a string or a valid ADF document/i);
+    ).toThrow(/description must be a plain text string/i);
+  });
+
+  it("rejects an ADF object as description (Jira 8 Server does not support ADF)", () => {
+    const adfDescription = {
+      type: "doc",
+      version: 1,
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Already structured" }] }],
+    };
+    expect(() =>
+      buildCreateIssuePayload(ISSUE_TYPE.TASK, {
+        [FIELD.PROJECT]: { key: "DNIEM" },
+        [FIELD.SUMMARY]: "Task with ADF description",
+        [CUSTOM_FIELD.DIFFICULTY_LEVEL]: { id: "10400" },
+        [CUSTOM_FIELD.PROJECT_STAGES]: [{ id: "10300" }],
+        [FIELD.DUE_DATE]: "2026-04-30",
+        [FIELD.DESCRIPTION]: adfDescription,
+      })
+    ).toThrow(/description must be a plain text string/i);
   });
 });
 

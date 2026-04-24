@@ -4,9 +4,8 @@ Create a Jira issue through the internal Jira 8 REST API.
 
 ## When to Use
 
-- User asks to create a new Jira ticket
-- The issue type is known up front (Task, Bug, Story, Change Request, Risk, etc.)
-- Required and optional fields should follow the metadata in `src/jira/constants.ts`
+1. **Always call `jira_get_create_meta` first** to discover the required and available fields for the target project + issue type. Required fields differ per project.
+2. Use this tool once you know the full payload.
 
 ## Input
 
@@ -17,20 +16,15 @@ Create a Jira issue through the internal Jira 8 REST API.
 
 ### Description Support
 
-`fields.description` supports two forms:
-
-- `string`: server automatically converts it to a minimal ADF document before sending to Jira
-- ADF JSON object: server validates the basic ADF document shape and forwards it unchanged
+`fields.description` accepts **plain text string only**. Jira 8 Server does not support ADF (Atlassian Document Format). The string is sent directly to Jira.
 
 ### Validation Rules
 
 - `issueTypeId` must be one of the IDs in `ISSUE_TYPE`
-- `fields` must contain every ID in `REQUIRED_FIELDS[issueTypeId]`, except `issuetype`
-- `fields` may only contain IDs from the issue type's allowlist:
-  - required IDs from `REQUIRED_FIELDS[issueTypeId]`
-  - optional IDs from `OPTIONAL_FIELDS[issueTypeId]`
+- `fields` must contain every ID in `REQUIRED_FIELDS[issueTypeId]`, except `issuetype` (these are DNIEM-project defaults; actual required fields may differ — use `jira_get_create_meta` to confirm)
 - Do not pass `issuetype` in `fields`; the tool injects it from `issueTypeId`
-- If `fields.description` is present, it must be either a `string` or a valid ADF document object
+- If `fields.description` is present, it must be a plain text `string`
+- Any extra fields not in the DNIEM allowlist are forwarded to Jira as-is; Jira returns a descriptive 400 if a field is invalid for the target project
 
 ## Output
 
@@ -73,23 +67,6 @@ All errors return `isError: true` in the MCP response.
       "description": "Minimal Task payload with an optional description"
     }
   }
-}
-```
-
-The payload above is sent to Jira with `description` normalized to:
-
-```json
-{
-  "type": "doc",
-  "version": 1,
-  "content": [
-    {
-      "type": "paragraph",
-      "content": [
-        { "type": "text", "text": "Minimal Task payload with an optional description" }
-      ]
-    }
-  ]
 }
 ```
 

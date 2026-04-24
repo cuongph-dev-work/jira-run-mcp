@@ -255,7 +255,7 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
 
   server.tool(
     "jira_add_comment",
-    "Add a comment to a Jira issue. Accepts plain text (auto-converted to ADF).",
+    "Add a plain text comment to a Jira issue.",
     {
       issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
       body: z.string().describe("Comment body as plain text."),
@@ -328,7 +328,7 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
 
   server.tool(
     "jira_update_issue_fields",
-    "Update a curated set of issue fields on an existing Jira issue. Description supports plain text or raw ADF.",
+    "Update fields on an existing Jira issue. Call jira_get_edit_meta first to discover which fields are editable. description must be plain text.",
     {
       issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
       fields: z.record(z.unknown()).describe("Curated set of updateable Jira fields."),
@@ -465,7 +465,7 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
             issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
             transitionId: z.string().optional().describe("Transition ID. Provide exactly one of transitionId or transitionName."),
             transitionName: z.string().optional().describe("Transition name. Provide exactly one of transitionId or transitionName."),
-            comment: z.union([z.string(), z.record(z.unknown())]).optional().describe("Optional transition comment."),
+            comment: z.string().optional().describe("Optional transition comment as plain text."),
             fields: z.record(z.unknown()).optional().describe("Optional field updates sent with transition."),
           })
         )
@@ -479,7 +479,7 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
 
   server.tool(
     "jira_assign_issue",
-    "Assign a Jira issue to a user by assigneeName or assigneeKey.",
+    "Assign a Jira issue to a user. MUST provide at least one of assigneeName or assigneeKey. Use jira_find_user to discover the correct values.",
     {
       issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
       assigneeName: z.string().optional().describe("Jira username/name for assignment"),
@@ -515,7 +515,7 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
 
   server.tool(
     "jira_update_comment",
-    "Update an existing Jira issue comment. Body accepts plain text or raw ADF JSON.",
+    "Update an existing Jira issue comment with plain text.",
     {
       issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
       commentId: z.string().describe("Jira comment ID."),
@@ -622,14 +622,18 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
   // Tool: jira_create_issue
   server.tool(
     "jira_create_issue",
-    "Create a Jira issue for a specific issue type using required and optional fields defined in src/jira/constants.ts.",
+    "Create a Jira issue. IMPORTANT: call jira_get_create_meta first to discover the required and allowed fields for the target project and issue type — required fields differ per project. Then pass those fields here.",
     {
       issueTypeId: z
         .nativeEnum(ISSUE_TYPE)
-        .describe("Jira issue type ID from src/jira/constants.ts, e.g. 10000 for Task."),
+        .describe(
+          "Jira issue type ID. Common values: Task=10000, Story=10101, Epic=10100, Bug=10202, Bug_Customer=10203, Improvement=10210, Change_Request=10206, Risk=10207, New_Feature=10211, QA=10205. Full list in src/jira/constants.ts ISSUE_TYPE."
+        ),
       fields: z
         .record(z.unknown())
-        .describe("Jira create payload fields keyed by FIELD/CUSTOM_FIELD IDs. Do not include issuetype; it is injected from issueTypeId."),
+        .describe(
+          "Jira create payload fields keyed by FIELD/CUSTOM_FIELD IDs. Do not include issuetype (injected from issueTypeId). description must be plain text string. Use jira_get_create_meta to discover required fields per project and issue type."
+        ),
     },
     async (input) => {
       return handleCreateIssue(input, config);
@@ -638,11 +642,13 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
 
   server.tool(
     "jira_preview_create_issue",
-    "Build and validate a Jira create issue payload without sending it to Jira.",
+    "Build and validate a Jira create issue payload without sending it to Jira. Call jira_get_create_meta first to discover required fields.",
     {
       issueTypeId: z
         .nativeEnum(ISSUE_TYPE)
-        .describe("Jira issue type ID from src/jira/constants.ts."),
+        .describe(
+          "Jira issue type ID. Common values: Task=10000, Story=10101, Epic=10100, Bug=10202, Bug_Customer=10203, Improvement=10210, Change_Request=10206, Risk=10207, New_Feature=10211, QA=10205."
+        ),
       fields: z
         .record(z.unknown())
         .describe("Jira create payload fields keyed by FIELD/CUSTOM_FIELD IDs."),
