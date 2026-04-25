@@ -47,8 +47,8 @@ import {
   buildMinimalAdfDocument,
   isAdfDocument,
   normalizeAdfValue,
-  normalizeJiraBody,
 } from "../jira/adf.js";
+import { normalizeJiraBody } from "../jira/body-normalizer.js";
 import { markdownToAdf } from "../jira/markdown-to-adf.js";
 import * as sessionManager from "../auth/session-manager.js";
 import { JiraHttpClient } from "../jira/http-client.js";

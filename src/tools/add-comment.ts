@@ -2,7 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
-import { normalizeJiraBody } from "../jira/adf.js";
+import { normalizeJiraBody } from "../jira/body-normalizer.js";
 import type { Config } from "../config.js";
 
 export const addCommentSchema = z.object({

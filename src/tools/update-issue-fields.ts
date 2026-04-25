@@ -3,7 +3,7 @@ import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { buildUpdateIssuePayload } from "../jira/update-issue.js";
-import { normalizeJiraBody } from "../jira/adf.js";
+import { normalizeJiraBody } from "../jira/body-normalizer.js";
 import { FIELD } from "../jira/constants.js";
 import type { Config } from "../config.js";
 

@@ -11,7 +11,7 @@ import {
   buildCreateIssuePayload,
   buildCreateIssueResult,
 } from "../jira/create-issue.js";
-import { normalizeJiraBody } from "../jira/adf.js";
+import { normalizeJiraBody } from "../jira/body-normalizer.js";
 import type { Config } from "../config.js";
 
 export const createIssueSchema = z.object({

@@ -1,5 +1,4 @@
 import { invalidInput } from "../errors.js";
-import { markdownToAdf } from "./markdown-to-adf.js";
 
 // ---------------------------------------------------------------------------
 // ADF node type interfaces
@@ -92,12 +91,6 @@ export interface AdfDocument {
 }
 
 // ---------------------------------------------------------------------------
-// Body format discriminant
-// ---------------------------------------------------------------------------
-
-export type JiraBodyFormat = "plain" | "markdown" | "adf";
-
-// ---------------------------------------------------------------------------
 // Builders & validators
 // ---------------------------------------------------------------------------
 
@@ -130,59 +123,6 @@ export function isAdfDocument(value: unknown): value is AdfDocument {
     maybeDoc.version === 1 &&        // must be exactly 1, not just a number
     Array.isArray(maybeDoc.content)  // content array is required (may be empty)
   );
-}
-
-/**
- * Returns a human-readable validation failure reason for debugging.
- * Used only for error messages in the "adf" format branch.
- */
-function describeAdfValidationFailure(value: unknown): string {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return "body must be a plain object";
-  }
-  const doc = value as Record<string, unknown>;
-  const problems: string[] = [];
-  if (doc["type"] !== "doc") problems.push(`type must be "doc" (got "${String(doc["type"])}")`);
-  if (doc["version"] !== 1) problems.push(`version must be 1 (got ${JSON.stringify(doc["version"])})`);
-  if (!Array.isArray(doc["content"])) problems.push("content must be an array");
-  return problems.length > 0 ? problems.join("; ") : "unknown";
-}
-
-/**
- * Normalizes a comment/description body to ADF based on the supplied format.
- *
- * - "plain"    – wraps the raw string in a single paragraph ADF node.
- * - "markdown" – parses Markdown subset into rich ADF (headings, lists, code
- *                blocks, inline marks, links, blockquotes, tables).
- * - "adf"      – validates and passes through an already-structured ADF object.
- *
- * @throws McpError (invalidInput) when the value cannot be converted.
- */
-export function normalizeJiraBody(
-  body: string | AdfDocument | Record<string, unknown>,
-  format: JiraBodyFormat = "markdown"
-): AdfDocument {
-  if (format === "adf") {
-    if (isAdfDocument(body)) return body;
-    throw invalidInput(
-      `bodyFormat is "adf" but body is not a valid ADF document: ${describeAdfValidationFailure(body)}`
-    );
-  }
-
-  if (typeof body !== "string") {
-    // If a non-string is passed with plain/markdown format, try ADF pass-through
-    if (isAdfDocument(body)) return body;
-    throw invalidInput(
-      "body must be a string when bodyFormat is \"plain\" or \"markdown\"."
-    );
-  }
-
-  if (format === "plain") {
-    return buildMinimalAdfDocument(body);
-  }
-
-  // format === "markdown"
-  return markdownToAdf(body);
 }
 
 // Legacy — keep for backward compat with existing callers outside tools

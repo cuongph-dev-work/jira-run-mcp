@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
   normalizeJiraBody,
-  isAdfDocument,
   type JiraBodyFormat,
-} from "../jira/adf.js";
+} from "../jira/body-normalizer.js";
+import { isAdfDocument } from "../jira/adf.js";
 
 // ---------------------------------------------------------------------------
 // Schema
