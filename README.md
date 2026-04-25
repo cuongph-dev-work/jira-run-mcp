@@ -48,7 +48,91 @@ An internal MCP (Model Context Protocol) server for Jira 8, using SSO session bo
 - Node.js >= 20
 - Access to an internal Jira 8 instance (SSO)
 
-## Setup
+---
+
+## Quick Start (End Users)
+
+> No cloning or building required. Install via npm or use `npx` directly.
+
+### Step 1 — Install Playwright Chromium
+
+Required once for the SSO browser login flow:
+
+```bash
+npx playwright install chromium
+```
+
+### Step 2 — Authenticate with Jira
+
+```bash
+npx @cuongph.dev/jira-mcp jira-auth-login
+```
+
+A browser window will open. Complete your SSO login manually. The session is saved locally to `.jira/session.json`.
+
+Verify the session is active:
+
+```bash
+npx @cuongph.dev/jira-mcp jira-auth-check
+```
+
+### Step 3 — Add to your MCP client
+
+No separate server process needed — the MCP client spawns and manages the process automatically via stdio.
+
+#### Cursor
+
+Edit `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "jira": {
+      "command": "npx",
+      "args": ["-y", "@cuongph.dev/jira-mcp"],
+      "env": {
+        "JIRA_BASE_URL": "https://jira.yourcompany.com"
+      }
+    }
+  }
+}
+```
+
+#### Claude Desktop
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "jira": {
+      "command": "npx",
+      "args": ["-y", "@cuongph.dev/jira-mcp"],
+      "env": {
+        "JIRA_BASE_URL": "https://jira.yourcompany.com"
+      }
+    }
+  }
+}
+```
+
+> **Tip:** You can omit the `env` block and place `JIRA_BASE_URL=https://jira.yourcompany.com` in a `.env` file at your working directory instead. `dotenv` is loaded automatically at startup.
+
+Restart your MCP client after saving the config.
+
+### Session Management
+
+| Command | Description |
+|---|---|
+| `npx @cuongph.dev/jira-mcp jira-auth-login` | Launch SSO browser flow and save session |
+| `npx @cuongph.dev/jira-mcp jira-auth-check` | Validate whether the stored session is alive |
+| `npx @cuongph.dev/jira-mcp jira-auth-clear` | Remove the stored session file |
+
+---
+
+## Development Setup
+
+> For contributors and developers working on the source code.
 
 ### 1. Clone and install
 
@@ -78,7 +162,7 @@ JIRA_BASE_URL=https://jira.yourcompany.com
 
 See `.env.example` for all available options.
 
-### 4. Authenticate (first time)
+### 4. Authenticate
 
 ```bash
 npm run jira-auth-login
@@ -86,21 +170,32 @@ npm run jira-auth-login
 
 A browser window will open. Complete the SSO login manually. Session is saved to `.jira/session.json`.
 
-### 5. Verify session
-
 ```bash
 npm run jira-auth-check
 ```
 
-### 6. Build
+### 5. Build
 
 ```bash
 npm run build
 ```
 
-### 7. Add to Claude Desktop / Cursor
+### 6. Add to MCP client (local build)
 
-Edit your MCP client config file:
+Use the local `dist/server.js` instead of the npm package:
+
+**Cursor** (`~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "jira": {
+      "command": "node",
+      "args": ["/absolute/path/to/jira-run-mcp/dist/server.js"]
+    }
+  }
+}
+```
 
 **Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
@@ -109,36 +204,15 @@ Edit your MCP client config file:
   "mcpServers": {
     "jira": {
       "command": "node",
-      "args": ["/absolute/path/to/jira-run-mcp/dist/server.js"],
-      "env": {
-        "JIRA_BASE_URL": "https://jira.yourcompany.com"
-      }
+      "args": ["/absolute/path/to/jira-run-mcp/dist/server.js"]
     }
   }
 }
 ```
 
-**Cursor** (`~/.cursor/mcp.json` or `.cursor/mcp.json` in your project):
+> The `.env` file in the project root is loaded automatically — no need to duplicate env vars in the MCP config.
 
-```json
-{
-  "mcpServers": {
-    "jira": {
-      "command": "node",
-      "args": ["/absolute/path/to/jira-run-mcp/dist/server.js"],
-      "env": {
-        "JIRA_BASE_URL": "https://jira.yourcompany.com"
-      }
-    }
-  }
-}
-```
-
-> **Tip:** If you have a `.env` file, you can omit the `env` block above and set `JIRA_BASE_URL` there instead. `dotenv` is loaded automatically at startup.
-
-Restart your MCP client after editing. No separate server process needed — the client spawns and manages the process automatically via stdio.
-
-## CLI Utilities
+### CLI Utilities (dev)
 
 | Command | Description |
 |---|---|
@@ -702,7 +776,7 @@ Session Expired?
       → "Run: npm run jira-auth-login"
 ```
 
-## Development
+## Development Commands
 
 ```bash
 # Type check
@@ -721,7 +795,7 @@ npm run build
 npm run dev
 ```
 
-> `npm run dev` runs the server via `tsx` with stdio — useful for testing with `npx @modelcontextprotocol/inspector`:
+> `npm run dev` runs the server via `tsx` with stdio — useful for testing with MCP Inspector:
 > ```bash
 > npx @modelcontextprotocol/inspector node dist/server.js
 > ```
