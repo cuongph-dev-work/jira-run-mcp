@@ -236,8 +236,8 @@ function convertPhrasingNode(
       ];
 
     case "break":
-      // Hard line break → ADF hardBreak node (typed as text for simplicity)
-      return [{ type: "text", text: "\n" }];
+      // ADF hard line break — must be { type: "hardBreak" }, not a text "\n"
+      return [{ type: "hardBreak" } as unknown as AdfTextNode];
 
     case "delete": {
       const marks: AdfMark[] = [...inheritedMarks, { type: "strike" }];

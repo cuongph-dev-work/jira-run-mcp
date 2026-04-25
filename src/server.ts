@@ -337,10 +337,15 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
 
   server.tool(
     "jira_update_issue_fields",
-    "Update fields on an existing Jira issue. Call jira_get_edit_meta first to discover which fields are editable. description must be plain text.",
+    "Update fields on an existing Jira issue. Call jira_get_edit_meta first to discover which fields are editable. description supports Markdown-to-ADF via descriptionFormat.",
     {
       issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
       fields: z.record(z.unknown()).describe("Curated set of updateable Jira fields."),
+      descriptionFormat: z
+        .enum(["plain", "markdown", "adf"])
+        .optional()
+        .default("plain")
+        .describe('How to interpret fields.description: "plain" (default, backward compat), "markdown" (converts Markdown to ADF), "adf" (pass-through ADF object).'),
     },
     async (input) => {
       return handleUpdateIssueFields(input, config);
@@ -776,6 +781,14 @@ Useful for migration workflows that add multiple structured comments (e.g. [RAW]
         .min(1)
         .max(10)
         .describe("Comments to add sequentially (1–10)."),
+      delayMs: z
+        .number()
+        .int()
+        .min(0)
+        .max(5000)
+        .optional()
+        .default(300)
+        .describe("Delay in ms between sequential comment additions (0–5000, default 300). Increase if hitting Jira rate limits."),
     },
     async (input) => {
       return handleAddComments(input, config);

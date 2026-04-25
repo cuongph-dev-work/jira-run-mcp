@@ -3,6 +3,8 @@ import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { buildUpdateIssuePayload } from "../jira/update-issue.js";
+import { normalizeJiraBody } from "../jira/adf.js";
+import { FIELD } from "../jira/constants.js";
 import type { Config } from "../config.js";
 
 export const updateIssueFieldsSchema = z.object({
@@ -11,6 +13,13 @@ export const updateIssueFieldsSchema = z.object({
     .min(1, "issueKey is required")
     .regex(/^[A-Z][A-Z0-9_]+-\d+$/, "issueKey must be a valid Jira key (e.g. PROJ-123)"),
   fields: z.record(z.unknown()),
+  descriptionFormat: z
+    .enum(["plain", "markdown", "adf"])
+    .optional()
+    .default("plain")
+    .describe(
+      'How to interpret fields.description: "plain" (default, backward compat), "markdown" (converts Markdown to ADF), "adf" (pass-through ADF object).'
+    ),
 });
 
 export async function handleUpdateIssueFields(
@@ -36,11 +45,27 @@ export async function handleUpdateIssueFields(
     }
     throw err;
   }
+  const { issueKey, fields, descriptionFormat } = parsed.data;
+
+  // Normalize description if format is not plain (tool layer handles conversion)
+  const normalizedFields = { ...fields };
+  const rawDescription = normalizedFields[FIELD.DESCRIPTION];
+  if (rawDescription != null && descriptionFormat !== "plain") {
+    try {
+      normalizedFields[FIELD.DESCRIPTION] = normalizeJiraBody(
+        rawDescription as string,
+        descriptionFormat
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return errorContent(`description conversion failed: ${msg}`);
+    }
+  }
 
   try {
     const client = new JiraHttpClient(cfg.JIRA_BASE_URL, sessionCookies);
-    const payload = buildUpdateIssuePayload(parsed.data.fields);
-    await client.updateIssueFields(parsed.data.issueKey, payload);
+    const payload = buildUpdateIssuePayload(normalizedFields);
+    await client.updateIssueFields(issueKey, payload);
 
     return {
       content: [
@@ -51,9 +76,9 @@ export async function handleUpdateIssueFields(
             "",
             `| Field | Value |`,
             `|---|---|`,
-            `| **Issue** | ${parsed.data.issueKey} |`,
+            `| **Issue** | ${issueKey} |`,
             `| **Updated Fields** | ${Object.keys(payload.fields).join(", ")} |`,
-            `| **URL** | ${cfg.JIRA_BASE_URL.replace(/\/$/, "")}/browse/${parsed.data.issueKey} |`,
+            `| **URL** | ${cfg.JIRA_BASE_URL.replace(/\/$/, "")}/browse/${issueKey} |`,
           ].join("\n"),
         },
       ],

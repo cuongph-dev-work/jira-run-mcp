@@ -127,9 +127,25 @@ export function isAdfDocument(value: unknown): value is AdfDocument {
 
   return (
     maybeDoc.type === "doc" &&
-    typeof maybeDoc.version === "number" &&
-    Array.isArray(maybeDoc.content)
+    maybeDoc.version === 1 &&        // must be exactly 1, not just a number
+    Array.isArray(maybeDoc.content)  // content array is required (may be empty)
   );
+}
+
+/**
+ * Returns a human-readable validation failure reason for debugging.
+ * Used only for error messages in the "adf" format branch.
+ */
+function describeAdfValidationFailure(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "body must be a plain object";
+  }
+  const doc = value as Record<string, unknown>;
+  const problems: string[] = [];
+  if (doc["type"] !== "doc") problems.push(`type must be "doc" (got "${String(doc["type"])}")`);
+  if (doc["version"] !== 1) problems.push(`version must be 1 (got ${JSON.stringify(doc["version"])})`);
+  if (!Array.isArray(doc["content"])) problems.push("content must be an array");
+  return problems.length > 0 ? problems.join("; ") : "unknown";
 }
 
 /**
@@ -137,7 +153,7 @@ export function isAdfDocument(value: unknown): value is AdfDocument {
  *
  * - "plain"    – wraps the raw string in a single paragraph ADF node.
  * - "markdown" – parses Markdown subset into rich ADF (headings, lists, code
- *                blocks, inline marks, links, blockquotes).
+ *                blocks, inline marks, links, blockquotes, tables).
  * - "adf"      – validates and passes through an already-structured ADF object.
  *
  * @throws McpError (invalidInput) when the value cannot be converted.
@@ -149,7 +165,7 @@ export function normalizeJiraBody(
   if (format === "adf") {
     if (isAdfDocument(body)) return body;
     throw invalidInput(
-      "bodyFormat is \"adf\" but body is not a valid ADF document object."
+      `bodyFormat is "adf" but body is not a valid ADF document: ${describeAdfValidationFailure(body)}`
     );
   }
 

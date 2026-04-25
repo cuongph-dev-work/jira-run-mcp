@@ -27,6 +27,14 @@ export const addCommentsSchema = z.object({
     .array(commentItemSchema)
     .min(1, "At least one comment is required")
     .max(10, "Maximum 10 comments per call"),
+  delayMs: z
+    .number()
+    .int()
+    .min(0)
+    .max(5000)
+    .optional()
+    .default(300)
+    .describe("Delay in ms between sequential comment additions (0–5000, default 300). Increase if hitting Jira rate limits."),
 });
 
 export type AddCommentsInput = z.infer<typeof addCommentsSchema>;
@@ -53,7 +61,7 @@ export async function handleAddComments(
     return errorContent(`Invalid input: ${msg}`);
   }
 
-  const { issueKey, comments } = parsed.data;
+  const { issueKey, comments, delayMs } = parsed.data;
 
   let sessionCookies;
   try {
@@ -85,6 +93,11 @@ export async function handleAddComments(
         ? err.message
         : String(err);
       results.push({ index: i, status: "error", error: message });
+    }
+
+    // Delay between comments (skip after last one)
+    if (i < comments.length - 1 && delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 

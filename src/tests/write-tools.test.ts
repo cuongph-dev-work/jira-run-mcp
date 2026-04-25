@@ -45,6 +45,7 @@ import {
 } from "../jira/update-issue.js";
 import {
   buildMinimalAdfDocument,
+  isAdfDocument,
   normalizeAdfValue,
   normalizeJiraBody,
 } from "../jira/adf.js";
@@ -358,6 +359,56 @@ describe("jira_add_comments bulk handler", () => {
     );
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain("Invalid input");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 3 tests
+// ---------------------------------------------------------------------------
+
+describe("isAdfDocument — strict validation", () => {
+  it("accepts a valid ADF doc with version 1", () => {
+    const valid = { type: "doc", version: 1, content: [] };
+    expect(isAdfDocument(valid)).toBe(true);
+  });
+
+  it("rejects version 2 (not supported)", () => {
+    expect(isAdfDocument({ type: "doc", version: 2, content: [] })).toBe(false);
+  });
+
+  it("rejects string version", () => {
+    expect(isAdfDocument({ type: "doc", version: "1", content: [] })).toBe(false);
+  });
+
+  it("rejects missing content array", () => {
+    expect(isAdfDocument({ type: "doc", version: 1 })).toBe(false);
+  });
+
+  it("normalizeJiraBody adf-format error includes specific violations", () => {
+    expect(() =>
+      normalizeJiraBody({ type: "doc", version: 2, content: [] }, "adf")
+    ).toThrow(/version must be 1/i);
+  });
+
+  it("normalizeJiraBody adf-format error for wrong type", () => {
+    expect(() =>
+      normalizeJiraBody({ type: "paragraph", version: 1, content: [] }, "adf")
+    ).toThrow(/type must be "doc"/i);
+  });
+});
+
+describe("markdownToAdf — hardBreak node", () => {
+  it('renders two-space line break as ADF hardBreak node (not text "\\n")', () => {
+    // Two trailing spaces + newline = hard break in Markdown
+    const doc = markdownToAdf("Line one  \nLine two");
+    const para = doc.content[0];
+    expect(para?.type).toBe("paragraph");
+    if (para?.type === "paragraph") {
+      const hasHardBreak = para.content.some(
+        (n) => (n as { type: string }).type === "hardBreak"
+      );
+      expect(hasHardBreak).toBe(true);
+    }
   });
 });
 
