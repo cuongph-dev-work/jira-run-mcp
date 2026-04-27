@@ -12,3 +12,5 @@ dist/
 *.log
 .gitnexus
 .serena
+.gemini
+.agents
