@@ -68,3 +68,106 @@ export interface TempoRawWorklog {
   location?: TempoRawLocation;
   attributes: Record<string, TempoRawWorkAttribute>;
 }
+
+/** Timesheet approval raw response object from GET /timesheet-approval */
+export interface TempoRawTimesheetApprovalItem {
+  user: {
+    self: string;
+    name: string;
+    key: string;
+    displayName: string;
+    avatar: string;
+  };
+  status: string;
+  workedSeconds: number;
+  submittedSeconds: number;
+  requiredSeconds: number;
+  requiredSecondsRelativeToday: number;
+  period: {
+    periodView: string;
+    dateFrom: string;
+    dateTo: string;
+  };
+  smartDateString: string;
+  worklogs?: {
+    href: string;
+  };
+}
+
+export interface TempoRawTimesheetApprovalResponse {
+  team?: {
+    self: string;
+    id: number;
+    name: string;
+  };
+  period?: {
+    dateFrom: string;
+    dateTo: string;
+    periodId: string;
+    periodView: string;
+  };
+  approvals: TempoRawTimesheetApprovalItem[];
+}
+
+/** Raw response item from Tempo POST /tempo-teams/3/search */
+export interface TempoRawTeam {
+  id: number;
+  name: string;
+  summary?: string;
+  lead?: {
+    name: string;
+    key: string;
+    displayName: string;
+    avatar?: Record<string, string>;
+    active?: boolean;
+  };
+  isPublic?: boolean;
+}
+
+/** Raw user actor/reviewer inside an approval log action */
+export interface TempoRawApprovalLogUser {
+  self: string;
+  name: string;
+  key: string;
+  displayName: string;
+  avatar: string;
+}
+
+/** Raw action object inside an approval log entry */
+export interface TempoRawApprovalLogAction {
+  name: string;
+  comment: string;
+  reviewer: TempoRawApprovalLogUser;
+  actor: TempoRawApprovalLogUser;
+  created: string;
+}
+
+/**
+ * Raw approval log entry from GET /timesheet-approval/log
+ * Each entry represents one status transition (submit, approve, etc.)
+ */
+export interface TempoRawApprovalLogEntry {
+  user: TempoRawApprovalLogUser;
+  status: string;
+  workedSeconds: number;
+  submittedSeconds: number;
+  requiredSeconds: number;
+  requiredSecondsRelativeToday: number;
+  period: {
+    periodView: string;
+    dateFrom: string;
+    dateTo: string;
+  };
+  action: TempoRawApprovalLogAction;
+  worklogs?: {
+    href: string;
+  };
+}
+
+/**
+ * Raw response from GET /timesheet-approval/log
+ * Keys are user keys (username or JIRAUSER...), values are arrays of log entries.
+ * An empty array means the user has no approval history for the period.
+ */
+export type TempoRawApprovalLogResponse = Record<string, TempoRawApprovalLogEntry[]>;
+

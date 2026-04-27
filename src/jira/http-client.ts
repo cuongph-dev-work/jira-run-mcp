@@ -20,6 +20,9 @@ import {
   tempoCreateWorklogUrl,
   tempoWorklogUrl,
   tempoSearchWorklogsUrl,
+  tempoTimesheetApprovalUrl,
+  tempoTimesheetApprovalLogUrl,
+  tempoTeamSearchUrl,
   userSearchUrl,
   ISSUE_FIELDS,
   SEARCH_FIELDS,
@@ -27,7 +30,7 @@ import {
 import { normalizeEditMetaResponse } from "./edit-meta.js";
 import { mapIssue, mapIssueSummary } from "./mappers.js";
 import { normalizeUserSearchResponse } from "./user-search.js";
-import { jiraHttpError, jiraResponseError, sessionExpired } from "../errors.js";
+import { jiraHttpError, jiraResponseError, permissionDenied, sessionExpired } from "../errors.js";
 import type {
   JiraAttachmentUploadResult,
   JiraCloneIssueInput,
@@ -51,8 +54,11 @@ import type {
   TempoWorklogInput,
   TempoWorklogListItem,
   TempoWorklogResult,
+  TempoTimesheetApproval,
+  TempoTeam,
+  TempoApprovalLogEntry,
 } from "../types.js";
-import type { TempoRawWorklog } from "../types/jira-api.js";
+import type { TempoRawTimesheetApprovalResponse, TempoRawWorklog, TempoRawTeam, TempoRawApprovalLogResponse } from "../types/jira-api.js";
 
 // ---------------------------------------------------------------------------
 // Client
@@ -428,6 +434,157 @@ export class JiraHttpClient {
     }));
   }
 
+  /** Search worklogs for one or more workers across a date range. */
+  async searchWorklogs(input: {
+    dateFrom: string;
+    dateTo: string;
+    workers: string[];
+  }): Promise<TempoWorklogListItem[]> {
+    const url = tempoSearchWorklogsUrl(this.baseUrl);
+    const res = await this.http.post(url, {
+      from: input.dateFrom,
+      to: input.dateTo,
+      worker: input.workers,
+    });
+
+    this.checkForAuthFailure(res.status, url, res.data);
+    this.assertOk(res.status, url, res.data);
+
+    const body = res.data;
+    if (!Array.isArray(body)) {
+      throw jiraResponseError("Expected array response from Tempo POST /worklogs/search", body);
+    }
+
+    return (body as TempoRawWorklog[]).map((raw) => ({
+      tempoWorklogId: raw.tempoWorklogId,
+      issueKey: raw.issue?.key ?? String(raw.originTaskId ?? ""),
+      issueSummary: raw.issue?.summary ?? null,
+      timeSpent: raw.timeSpent ?? "",
+      timeSpentSeconds: raw.timeSpentSeconds ?? 0,
+      startDate: raw.started ? raw.started.slice(0, 10) : "",
+      comment: raw.comment ?? null,
+      process: raw.attributes?._Process_?.value ?? null,
+      typeOfWork: raw.attributes?._TypeOfWork_?.value ?? null,
+    }));
+  }
+
+  async getTimesheetApprovals(teamId: number, periodStartDate: string): Promise<TempoTimesheetApproval[]> {
+    const url = tempoTimesheetApprovalUrl(this.baseUrl);
+    const res = await this.http.get(url, {
+      params: { teamId, periodStartDate },
+    });
+
+    this.checkForAuthFailure(res.status, url, res.data);
+    this.assertOk(res.status, url, res.data);
+
+    const body = res.data as TempoRawTimesheetApprovalResponse;
+    if (!body || !Array.isArray(body.approvals)) {
+      throw jiraResponseError("Expected response to contain approvals array from Tempo GET /timesheet-approval", body);
+    }
+
+    return body.approvals.map((raw) => ({
+      username: raw.user?.name ?? "",
+      displayName: raw.user?.displayName ?? "",
+      status: raw.status ?? "",
+      workedSeconds: raw.workedSeconds ?? 0,
+      submittedSeconds: raw.submittedSeconds ?? 0,
+      requiredSeconds: raw.requiredSeconds ?? 0,
+      requiredSecondsRelativeToday: raw.requiredSecondsRelativeToday ?? 0,
+      periodDateFrom: raw.period?.dateFrom ?? "",
+      periodDateTo: raw.period?.dateTo ?? "",
+    }));
+  }
+
+  async searchTempoTeams(query: string): Promise<TempoTeam[]> {
+    const url = tempoTeamSearchUrl(this.baseUrl);
+    const res = await this.http.post(url, { teamSearchString: query });
+
+    this.checkForAuthFailure(res.status, url, res.data);
+    this.assertOk(res.status, url, res.data);
+
+    const body = res.data;
+    if (!Array.isArray(body)) {
+      throw jiraResponseError("Expected array response from Tempo POST /tempo-teams/3/search", body);
+    }
+
+    return (body as TempoRawTeam[]).map((raw) => ({
+      id: raw.id,
+      name: raw.name ?? "",
+      summary: raw.summary ?? "",
+      leadUsername: raw.lead?.name ?? "",
+      leadDisplayName: raw.lead?.displayName ?? "",
+      isPublic: raw.isPublic ?? false,
+    }));
+  }
+
+  async getTimesheetApprovalLog(
+    teamId: number,
+    periodStartDate: string
+  ): Promise<Map<string, TempoApprovalLogEntry[]>> {
+    const url = tempoTimesheetApprovalLogUrl(this.baseUrl, teamId, periodStartDate);
+    const res = await this.http.get(url);
+
+    this.checkForAuthFailure(res.status, url, res.data);
+    this.assertOk(res.status, url, res.data);
+
+    const body = res.data as TempoRawApprovalLogResponse;
+    const result = new Map<string, TempoApprovalLogEntry[]>();
+
+    for (const [userKey, entries] of Object.entries(body)) {
+      result.set(
+        userKey,
+        entries.map((raw) => ({
+          userKey,
+          displayName: raw.user?.displayName ?? "",
+          status: raw.status ?? "",
+          workedSeconds: raw.workedSeconds ?? 0,
+          submittedSeconds: raw.submittedSeconds ?? 0,
+          requiredSeconds: raw.requiredSeconds ?? 0,
+          periodDateFrom: raw.period?.dateFrom ?? "",
+          periodDateTo: raw.period?.dateTo ?? "",
+          actionName: raw.action?.name ?? "",
+          actionComment: raw.action?.comment ?? "",
+          actionCreated: raw.action?.created ?? "",
+          reviewerDisplayName: raw.action?.reviewer?.displayName ?? "",
+          reviewerUsername: raw.action?.reviewer?.name ?? "",
+          actorDisplayName: raw.action?.actor?.displayName ?? "",
+          actorUsername: raw.action?.actor?.name ?? "",
+        }))
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Performs an approval action (approve / reject / reopen) on a user's timesheet.
+   * POST /rest/tempo-timesheets/4/timesheet-approval
+   */
+  async actOnTimesheetApproval(input: {
+    userKey: string;
+    periodDateFrom: string;
+    action: "approve" | "reject" | "reopen";
+    comment: string;
+    reviewerKey: string;
+  }): Promise<void> {
+    const url = tempoTimesheetApprovalUrl(this.baseUrl);
+    const payload = {
+      user: { key: input.userKey },
+      period: { dateFrom: input.periodDateFrom },
+      action: {
+        name: input.action,
+        comment: input.comment,
+        reviewer: { key: input.reviewerKey },
+      },
+      meta: { "analytics-number-of-approvals": 1 },
+    };
+
+    const res = await this.http.post(url, payload);
+
+    this.checkForAuthFailure(res.status, url, res.data);
+    this.assertOk(res.status, url, res.data);
+  }
+
   async updateWorklog(
     worklogId: string,
     payload: Partial<TempoWorklogInput>
@@ -668,10 +825,14 @@ export class JiraHttpClient {
     url: string,
     body: unknown
   ): void {
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       throw sessionExpired(
-        `Jira returned ${status} — session likely expired. Run \`jira-auth-login\` to reauthenticate.`
+        `Jira returned 401 — session likely expired. Run \`jira-auth-login\` to reauthenticate.`
       );
+    }
+    if (status === 403) {
+      // 403 = authenticated but no permission — re-login won't help
+      throw permissionDenied(url);
     }
     if (status >= 300 && status < 400) {
       throw sessionExpired(

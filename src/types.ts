@@ -414,3 +414,47 @@ export interface TempoWorklogListItem {
   process: string | null;
   typeOfWork: string | null;
 }
+
+export interface TempoTimesheetApproval {
+  username: string;
+  displayName: string;
+  status: string;
+  workedSeconds: number;
+  submittedSeconds: number;
+  requiredSeconds: number;
+  requiredSecondsRelativeToday: number;
+  periodDateFrom: string;
+  periodDateTo: string;
+}
+
+export interface TempoTeam {
+  id: number;
+  name: string;
+  summary: string;
+  leadUsername: string;
+  leadDisplayName: string;
+  isPublic: boolean;
+}
+
+/** One normalized approval log entry (one action/event) for a user */
+export interface TempoApprovalLogEntry {
+  userKey: string;
+  displayName: string;
+  status: string;
+  workedSeconds: number;
+  submittedSeconds: number;
+  requiredSeconds: number;
+  periodDateFrom: string;
+  periodDateTo: string;
+  actionName: string;
+  actionComment: string;
+  actionCreated: string;
+  reviewerDisplayName: string;
+  reviewerUsername: string;
+  actorDisplayName: string;
+  actorUsername: string;
+}
+
+/** Approval log per user keyed by userKey */
+export type TempoApprovalLog = Map<string, TempoApprovalLogEntry[]>;
+

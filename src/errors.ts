@@ -5,6 +5,7 @@
 export type ErrorCode =
   | "AUTH_REQUIRED"
   | "SESSION_EXPIRED"
+  | "PERMISSION_DENIED"
   | "JIRA_HTTP_ERROR"
   | "JIRA_RESPONSE_ERROR"
   | "CONFIG_ERROR"
@@ -38,6 +39,18 @@ export function authRequired(message = "No Jira session found. Run `jira-auth-lo
 
 export function sessionExpired(message = "Jira session has expired. Run `jira-auth-login` to reauthenticate."): McpError {
   return new McpError("SESSION_EXPIRED", message);
+}
+
+/**
+ * Jira returned 403 — the authenticated user lacks permission for this resource.
+ * Re-logging in will NOT fix this; the Jira admin needs to grant access.
+ */
+export function permissionDenied(resource?: string): McpError {
+  const what = resource ? ` to access ${resource}` : "";
+  return new McpError(
+    "PERMISSION_DENIED",
+    `Your Jira account does not have permission${what}. Contact your Jira administrator to request access.`
+  );
 }
 
 export function jiraHttpError(status: number, url: string, body?: string): McpError {

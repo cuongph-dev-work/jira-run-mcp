@@ -79,6 +79,18 @@ export function tempoWorklogUrl(baseUrl: string, worklogId: string): string {
   return `${baseUrl}${TEMPO_API_BASE}/worklogs/${encodeURIComponent(worklogId)}`;
 }
 
+export function tempoTimesheetApprovalUrl(baseUrl: string): string {
+  return `${baseUrl}${TEMPO_API_BASE}/timesheet-approval`;
+}
+
+export function tempoTimesheetApprovalLogUrl(baseUrl: string, teamId: number, periodStartDate: string): string {
+  return `${baseUrl}${TEMPO_API_BASE}/timesheet-approval/log?teamId=${encodeURIComponent(teamId)}&periodStartDate=${encodeURIComponent(periodStartDate)}`;
+}
+
+export function tempoTeamSearchUrl(baseUrl: string): string {
+  return `${baseUrl}/rest/tempo-teams/3/search`;
+}
+
 export function issueLinkUrl(baseUrl: string): string {
   return `${baseUrl}${API_BASE}/issueLink`;
 }

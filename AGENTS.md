@@ -31,6 +31,13 @@
 - **Prefer libraries over hand-rolled code.** For common tasks (date formatting, duration parsing, HTTP retry, etc.), use well-known npm packages instead of writing custom implementations. Only write a manual helper if the logic is trivially small (< 5 lines) and adding a dependency would be disproportionate.
 - **Raw API response types in `src/types/jira-api.ts`.** Types that mirror the exact shape of Jira/Tempo REST API responses must live in `src/types/jira-api.ts`, separate from the normalized application interfaces in `src/types.ts`. This keeps API contracts independently trackable and supports future API documentation generation.
 
+## Navigation Hints
+
+All tools that return information should conclude their Markdown output with context-aware "💡 Next:" navigation hints. These hints guide the LLM on what actions it can or should take next based on the tool's output.
+- **Use the utility:** Import and use the `navigationHint` function from `src/utils.js`.
+- **Context-aware:** If an issue is created/found, suggest tools like `jira_add_comment`, `jira_transition_issue`, or `jira_get_issue`.
+- **Format:** The hints are automatically formatted as a Markdown blockquote.
+
 ## File Conventions
 
 | Area | Location | Notes |
@@ -68,6 +75,26 @@
 - **Input:** `{ jql: string, limit?: number (1–50, default 10) }`
 - **Output:** Markdown text with total count + issue summaries.
 - **Docs:** `docs/tools/jira_search_issues.md`
+
+### Tempo Timesheet Tools
+
+> Full workflow: `docs/superpowers/specs/tempo-timesheet-workflow.md`
+
+| Tool | Input | Purpose |
+|------|-------|---------|
+| `jira_search_tempo_teams` | `{ query: string }` | Find team by name → get `teamId` |
+| `jira_get_timesheet_approvals` | `{ teamId, periodStartDate }` | Current approval status of all team members |
+| `jira_get_timesheet_approval_log` | `{ teamId, periodStartDate }` | Audit trail: submit/approve/reject history with timestamps |
+| `jira_search_worklogs` | `{ dateFrom, dateTo, workers[] }` | Worklog entries for specific users over a date range |
+| `jira_act_on_timesheet_approval` | `{ userKey, periodDateFrom, action, comment? }` | Approve / reject / reopen a member's timesheet ⚠️ WRITE |
+
+**Chaining pattern:**
+```
+jira_search_tempo_teams → jira_get_timesheet_approvals → jira_get_timesheet_approval_log
+                                                        → jira_search_worklogs
+                                                        → jira_act_on_timesheet_approval
+```
+
 
 ## Adding a New Tool
 

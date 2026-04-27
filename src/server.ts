@@ -44,6 +44,11 @@ import { handleAddWorklog } from "./tools/add-worklog.js";
 import { handlePreviewAdf } from "./tools/preview-adf.js";
 import { handleAddComments } from "./tools/add-comments.js";
 import { handleAddCommentWithFile } from "./tools/add-comment-with-file.js";
+import { handleGetTimesheetApprovals } from "./tools/get-timesheet-approvals.js";
+import { handleSearchTempoTeams } from "./tools/search-tempo-teams.js";
+import { handleGetTimesheetApprovalLog } from "./tools/get-timesheet-approval-log.js";
+import { handleSearchWorklogs } from "./tools/search-worklogs.js";
+import { handleActOnTimesheetApproval } from "./tools/act-on-timesheet-approval.js";
 
 // ---------------------------------------------------------------------------
 // Tool confirmation instructions (appended to write/destructive tool descriptions)
@@ -618,6 +623,70 @@ Returns: confirmation with Tempo worklog ID, issue details, and logged duration.
     },
     async (input) => {
       return handleGetMyWorklogs(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_get_timesheet_approvals",
+    "List the current timesheet approval statuses for all members of a Tempo team and period. Accepts either teamId (number) or teamName (string) — if teamName is given, it is auto-resolved to the matching team ID.",
+    {
+      teamId: z.number().int().positive().optional().describe("Numeric Tempo team ID (e.g., 484). Use this OR teamName."),
+      teamName: z.string().optional().describe("Team name to auto-resolve (e.g., \"GensaiPlatform\"). Use this OR teamId."),
+      periodStartDate: z.string().describe("Start date of the timesheet period in yyyy-MM-dd format (e.g., 2026-04-27)"),
+    },
+    async (input) => {
+      return handleGetTimesheetApprovals(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_get_timesheet_approval_log",
+    "Retrieve the approval action history (submit/approve/reject timeline) for all members of a Tempo team. Accepts either teamId (number) or teamName (string) — if teamName is given, it is auto-resolved.",
+    {
+      teamId: z.number().int().positive().optional().describe("Numeric Tempo team ID (e.g., 115). Use this OR teamName."),
+      teamName: z.string().optional().describe("Team name to auto-resolve (e.g., \"GensaiPlatform\"). Use this OR teamId."),
+      periodStartDate: z.string().describe("Start date of the timesheet period in yyyy-MM-dd format (e.g., 2026-04-20)"),
+    },
+    async (input) => {
+      return handleGetTimesheetApprovalLog(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_search_worklogs",
+    "Search Tempo worklogs for one or more workers over a date range. Returns worklog entries with time spent, issue, process, and comment details.",
+    {
+      dateFrom: z.string().describe("Start of date range in yyyy-MM-dd format (e.g., 2026-04-20)"),
+      dateTo: z.string().describe("End of date range inclusive in yyyy-MM-dd format (e.g., 2026-04-26)"),
+      workers: z.array(z.string()).min(1).describe("List of Jira usernames/keys to fetch worklogs for, e.g. [\"ducnpp@runsystem.net\"]"),
+    },
+    async (input) => {
+      return handleSearchWorklogs(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_act_on_timesheet_approval",
+    "Approve, reject, or reopen a team member's Tempo timesheet for a given period. The reviewer is automatically set to the currently authenticated user." + WRITE_CONFIRMATION,
+    {
+      userKey: z.string().describe("Jira user key of the member whose timesheet to act on (e.g., \"lapdq@runsystem.net\")"),
+      periodDateFrom: z.string().describe("Start date of the timesheet period in yyyy-MM-dd format (e.g., \"2026-04-20\")"),
+      action: z.enum(["approve", "reject", "reopen"]).describe("Action to perform: approve, reject, or reopen"),
+      comment: z.string().optional().describe("Optional comment (required when rejecting to explain the reason)"),
+    },
+    async (input) => {
+      return handleActOnTimesheetApproval(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_search_tempo_teams",
+    "Search for Tempo teams by name. Returns team ID, name, and lead information.",
+    {
+      query: z.string().describe("Search string to find teams (use empty string to list all)"),
+    },
+    async (input) => {
+      return handleSearchTempoTeams(input, config);
     }
   );
 
