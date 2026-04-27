@@ -5,7 +5,6 @@
  * Validates whether the stored Jira session is still alive.
  * Exits 0 if valid, exits 1 if expired or missing.
  */
-import "dotenv/config";
 import { config } from "../config.js";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { readSession } from "../auth/session-store.js";

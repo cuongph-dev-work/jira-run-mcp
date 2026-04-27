@@ -6,7 +6,6 @@
  * On success, saves the Playwright storage state to the configured session file.
  * Optionally validates the session immediately after saving.
  */
-import "dotenv/config";
 import { config } from "../config.js";
 import { runInteractiveLogin } from "../auth/playwright-auth.js";
 import { loadAndValidateSession } from "../auth/session-manager.js";

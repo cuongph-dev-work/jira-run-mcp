@@ -1,8 +1,11 @@
+import { defaultSessionDir, defaultDownloadsDir } from "./bootstrap.js";
+import { join } from "path";
 import { z } from "zod";
 import { configError } from "./errors.js";
 
 // ---------------------------------------------------------------------------
-// Schema
+// Schema — only user-facing variables are read from the environment.
+// Internal/infra settings are hardcoded below.
 // ---------------------------------------------------------------------------
 
 const schema = z.object({
@@ -10,35 +13,24 @@ const schema = z.object({
     .string()
     .url("JIRA_BASE_URL must be a valid URL (e.g. https://jira.yourcompany.com)"),
 
-  JIRA_VALIDATE_PATH: z
-    .string()
-    .default("/rest/api/2/myself"),
-
-  JIRA_SESSION_FILE: z
-    .string()
-    .default(".jira/session.json"),
-
-
   LOG_LEVEL: z
     .enum(["debug", "info", "warn", "error"])
     .default("info"),
-
-  PLAYWRIGHT_HEADLESS: z
-    .string()
-    .default("false")
-    .transform((v) => v.toLowerCase() === "true"),
-
-  PLAYWRIGHT_BROWSER: z
-    .enum(["chromium", "firefox", "webkit"])
-    .default("chromium"),
-
-  ATTACHMENT_WORKSPACE: z
-    .string()
-    .default("./downloads")
-    .describe("Directory where downloaded attachments are saved (created if missing)"),
 });
 
-export type Config = z.infer<typeof schema>;
+// ---------------------------------------------------------------------------
+// Hardcoded defaults — not configurable via .env
+// ---------------------------------------------------------------------------
+
+const DEFAULTS = {
+  JIRA_SESSION_FILE: join(defaultSessionDir, "session.json"), // absolute path
+  JIRA_VALIDATE_PATH: "/rest/api/2/myself",
+  ATTACHMENT_WORKSPACE: defaultDownloadsDir,                   // absolute path
+  PLAYWRIGHT_HEADLESS: false,
+  PLAYWRIGHT_BROWSER: "chromium" as const,
+} as const;
+
+export type Config = z.infer<typeof schema> & typeof DEFAULTS;
 
 // ---------------------------------------------------------------------------
 // Parse once at startup — callers import `config` directly
@@ -52,7 +44,7 @@ function loadConfig(): Config {
       .join("\n");
     throw configError(`Invalid configuration:\n${messages}`, result.error);
   }
-  return result.data;
+  return { ...DEFAULTS, ...result.data };
 }
 
 export const config: Config = loadConfig();

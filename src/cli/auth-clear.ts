@@ -5,7 +5,6 @@
  * Removes the locally stored Jira session file.
  * Safe to run even if no session exists.
  */
-import "dotenv/config";
 import { config } from "../config.js";
 import { clearSession } from "../auth/session-store.js";
 
