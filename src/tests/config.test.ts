@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // We test config validation by manipulating process.env
 // and re-importing the module via dynamic import.
 
+vi.mock("dotenv", () => ({ config: vi.fn() }));
+
 describe("config", () => {
   const ORIGINAL_ENV = { ...process.env };
 
@@ -18,7 +20,7 @@ describe("config", () => {
 
     expect(config.JIRA_BASE_URL).toBe("https://jira.example.com");
     expect(config.JIRA_VALIDATE_PATH).toBe("/rest/api/2/myself");
-    expect(config.JIRA_SESSION_FILE).toBe(".jira/session.json");
+    expect(config.JIRA_SESSION_FILE).toMatch(/[\\/]\.jira[\\/]session\.json$/);
     expect(config.LOG_LEVEL).toBe("info");
     expect(config.PLAYWRIGHT_HEADLESS).toBe(false);
     expect(config.PLAYWRIGHT_BROWSER).toBe("chromium");
@@ -26,15 +28,17 @@ describe("config", () => {
 
   it("accepts overridden values", async () => {
     process.env.JIRA_BASE_URL = "https://jira.corp.net";
+    process.env.LOG_LEVEL = "debug";
+    // PLAYWRIGHT_HEADLESS and PLAYWRIGHT_BROWSER are hardcoded defaults now,
+    // so setting them in env should not change them.
     process.env.PLAYWRIGHT_HEADLESS = "true";
     process.env.PLAYWRIGHT_BROWSER = "firefox";
-    process.env.LOG_LEVEL = "debug";
 
     const { config } = await import("../config.js");
 
-    expect(config.PLAYWRIGHT_HEADLESS).toBe(true);
-    expect(config.PLAYWRIGHT_BROWSER).toBe("firefox");
     expect(config.LOG_LEVEL).toBe("debug");
+    expect(config.PLAYWRIGHT_HEADLESS).toBe(false); // Should remain default
+    expect(config.PLAYWRIGHT_BROWSER).toBe("chromium"); // Should remain default
   });
 
   it("throws CONFIG_ERROR when JIRA_BASE_URL is missing", async () => {
