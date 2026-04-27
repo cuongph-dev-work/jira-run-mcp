@@ -1,7 +1,17 @@
 {
   "name": "@cuongph.dev/jira-mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "MCP server for internal Jira 8 via SSO session bootstrap with Playwright",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cuongph-dev-work/jira-run-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cuongph-dev-work/jira-run-mcp/issues"
+  },
+  "homepage": "https://github.com/cuongph-dev-work/jira-run-mcp#readme",
+  "author": "cuongph-dev-work",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=20"
