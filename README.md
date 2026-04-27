@@ -65,21 +65,29 @@ npx -y playwright install chromium
 
 ### Step 2 — Authenticate with Jira
 
+You must provide your Jira URL when logging in. Replace the URL with your actual Jira instance:
+
 ```bash
-npx @cuongph.dev/jira-mcp jira-auth-login
+JIRA_BASE_URL=https://jira.yourcompany.com npx -y -p @cuongph.dev/jira-mcp jira-auth-login
 ```
 
-A browser window will open. Complete your SSO login manually. The session is saved locally to `.jira/session.json`.
+A browser window will open. Complete your SSO login manually. The session is saved locally to `.jira/session.json` (or `~/.jira/jira-mcp/session.json` for global npx usage).
 
 Verify the session is active:
 
 ```bash
-npx @cuongph.dev/jira-mcp jira-auth-check
+JIRA_BASE_URL=https://jira.yourcompany.com npx -y -p @cuongph.dev/jira-mcp jira-auth-check
 ```
 
 ### Step 3 — Add to your MCP client
 
 No separate server process needed — the MCP client spawns and manages the process automatically via stdio.
+
+#### Gemini CLI
+
+```bash
+gemini mcp add jira npx -y @cuongph.dev/jira-mcp --env JIRA_BASE_URL=https://jira.yourcompany.com
+```
 
 #### Cursor
 
