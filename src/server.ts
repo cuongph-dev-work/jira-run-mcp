@@ -42,6 +42,7 @@ import { handleValidateIssueUpdate } from "./tools/validate-issue-update.js";
 import { handleAddWorklog } from "./tools/add-worklog.js";
 import { handlePreviewAdf } from "./tools/preview-adf.js";
 import { handleAddComments } from "./tools/add-comments.js";
+import { handleAddCommentWithFile } from "./tools/add-comment-with-file.js";
 
 // ---------------------------------------------------------------------------
 // Tool confirmation instructions (appended to write/destructive tool descriptions)
@@ -833,6 +834,62 @@ Useful for migration workflows that add multiple structured comments (e.g. [RAW]
     },
     async (input) => {
       return handleAddComments(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_add_comment_with_file",
+    `Upload a file as a Jira issue attachment and post a comment that references it.
+
+Jira Server 8 does not support attaching files directly to comments via REST API.
+This tool works around that by:
+  1. Uploading the file to the issue's attachments.
+  2. Posting a comment whose body contains a [^filename] link (Jira Wiki Markup).
+     Images (PNG/JPG/GIF) are embedded inline using !filename! syntax.
+
+ATTACHMENT PLACEMENT:
+- "append" (default): a "📎 Attachment: [^filename]" line is added at the bottom of the comment.
+- "inline": place the literal {{ATTACHMENT}} placeholder anywhere in the body — it will be
+  replaced with the [^filename] / !image! reference.
+
+ENCODING:
+- utf8 (default): fileContent is a plain text string.
+- base64: fileContent is a base64-encoded string (for binary files).` + WRITE_CONFIRMATION,
+    {
+      issueKey: z.string().describe("Jira issue key, e.g. PROJ-123"),
+      body: z.string().describe("Comment body as Markdown (default) or Jira Wiki Markup."),
+      bodyFormat: z
+        .enum(["plain", "markdown"])
+        .optional()
+        .default("markdown")
+        .describe('How to interpret body: "markdown" (default) or "plain" (pass-through Wiki Markup).'),
+      filename: z
+        .string()
+        .describe("Attachment filename with extension, e.g. \"report.md\", \"screenshot.png\"."),
+      fileContent: z
+        .string()
+        .describe("File content as a plain text string (utf8) or base64-encoded string."),
+      fileEncoding: z
+        .enum(["utf8", "base64"])
+        .optional()
+        .default("utf8")
+        .describe('Encoding of fileContent: "utf8" (default) or "base64" for binary content.'),
+      mimeType: z
+        .string()
+        .optional()
+        .describe("Optional MIME type override. Inferred from filename extension if omitted."),
+      attachmentPlacement: z
+        .enum(["append", "inline"])
+        .optional()
+        .default("append")
+        .describe(
+          'Where to place the [^filename] reference: ' +
+          '"append" (default) appends it at the bottom; ' +
+          '"inline" replaces {{ATTACHMENT}} placeholder inside the body.'
+        ),
+    },
+    async (input) => {
+      return handleAddCommentWithFile(input, config);
     }
   );
 

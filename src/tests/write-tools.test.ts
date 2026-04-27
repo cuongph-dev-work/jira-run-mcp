@@ -1306,3 +1306,263 @@ describe("upload attachment content tool handler", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// jira_add_comment_with_file
+// ---------------------------------------------------------------------------
+
+describe("jira_add_comment_with_file handler", () => {
+  const mockConfig = {
+    JIRA_BASE_URL: "https://jira.example.com",
+    JIRA_SESSION_FILE: ".jira/session.json",
+    JIRA_VALIDATE_PATH: "/rest/api/2/myself",
+    LOG_LEVEL: "info",
+    PLAYWRIGHT_HEADLESS: false,
+    PLAYWRIGHT_BROWSER: "chromium" as const,
+    ATTACHMENT_WORKSPACE: process.cwd(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uploads file and posts comment with [^filename] appended (default)", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    const uploadSpy = vi
+      .spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer")
+      .mockResolvedValue([
+        { id: "80001", filename: "report.md", size: 1024, mimeType: "text/markdown", url: null },
+      ]);
+    const commentSpy = vi
+      .spyOn(JiraHttpClient.prototype, "addComment")
+      .mockResolvedValue({
+        id: "90001",
+        issueKey: "DNIEM-42",
+        url: "https://jira.example.com/browse/DNIEM-42?focusedCommentId=90001",
+      });
+
+    const result = await handleAddCommentWithFile(
+      {
+        issueKey: "DNIEM-42",
+        body: "# Analysis Report\n\nSee the attached file for details.",
+        bodyFormat: "markdown",
+        filename: "report.md",
+        fileContent: "# Report content",
+        fileEncoding: "utf8",
+      },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("Comment with attachment posted");
+    expect(result.content[0].text).toContain("80001");
+    expect(result.content[0].text).toContain("90001");
+
+    // Comment body should contain the attachment ref.
+    // The markdown→wiki converter escapes brackets: [^file] → \[^file\]
+    const commentPayload = commentSpy.mock.calls[0]?.[1];
+    expect(commentPayload?.body).toContain("report.md");
+    // Confirm attachment section is present (the 📎 label)
+    expect(commentPayload?.body).toContain("📎");
+
+    // File should have been uploaded with correct filename
+    expect(uploadSpy.mock.calls[0]?.[2]).toBe("report.md");
+  });
+
+  it("replaces {{ATTACHMENT}} placeholder when placement=inline", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      { id: "80002", filename: "data.csv", size: 512, mimeType: "text/csv", url: null },
+    ]);
+    const commentSpy = vi
+      .spyOn(JiraHttpClient.prototype, "addComment")
+      .mockResolvedValue({
+        id: "90002",
+        issueKey: "DNIEM-42",
+        url: "https://jira.example.com/browse/DNIEM-42?focusedCommentId=90002",
+      });
+
+    await handleAddCommentWithFile(
+      {
+        issueKey: "DNIEM-42",
+        body: "Download the CSV here: {{ATTACHMENT}}",
+        bodyFormat: "plain",
+        filename: "data.csv",
+        fileContent: "col1,col2\n1,2",
+        attachmentPlacement: "inline",
+      },
+      mockConfig as never
+    );
+
+    const commentPayload = commentSpy.mock.calls[0]?.[1];
+    // {{ATTACHMENT}} replaced with [^data.csv], not appended
+    expect(commentPayload?.body).toContain("[^data.csv]");
+    expect(commentPayload?.body).not.toContain("{{ATTACHMENT}}");
+    expect(commentPayload?.body).not.toContain("📎");
+  });
+
+  it("uses !filename! syntax for image attachments", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      { id: "80003", filename: "screenshot.png", size: 4096, mimeType: "image/png", url: null },
+    ]);
+    const commentSpy = vi
+      .spyOn(JiraHttpClient.prototype, "addComment")
+      .mockResolvedValue({
+        id: "90003",
+        issueKey: "DNIEM-42",
+        url: "https://jira.example.com/browse/DNIEM-42?focusedCommentId=90003",
+      });
+
+    await handleAddCommentWithFile(
+      {
+        issueKey: "DNIEM-42",
+        body: "Screenshot of the issue:",
+        filename: "screenshot.png",
+        fileContent: "fake-image-bytes",
+      },
+      mockConfig as never
+    );
+
+    const commentPayload = commentSpy.mock.calls[0]?.[1];
+    // Images use !filename! inline display syntax
+    expect(commentPayload?.body).toContain("!screenshot.png!");
+  });
+
+  it("reports partial failure when comment post fails after upload", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      { id: "80004", filename: "report.md", size: 200, mimeType: "text/markdown", url: null },
+    ]);
+    vi.spyOn(JiraHttpClient.prototype, "addComment").mockRejectedValue(
+      new Error("Connection timeout")
+    );
+
+    const result = await handleAddCommentWithFile(
+      {
+        issueKey: "DNIEM-42",
+        body: "Content",
+        filename: "report.md",
+        fileContent: "data",
+      },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBe(true);
+    // Should mention the upload succeeded so user knows the file is there
+    expect(result.content[0].text).toContain("80004");
+    expect(result.content[0].text).toContain("comment posting failed");
+  });
+
+  it("returns isError when upload returns empty attachment list", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([]);
+
+    const result = await handleAddCommentWithFile(
+      {
+        issueKey: "DNIEM-42",
+        body: "Content",
+        filename: "report.md",
+        fileContent: "data",
+      },
+      mockConfig as never
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("no attachment records");
+  });
+
+  it("rejects invalid issueKey", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    const result = await handleAddCommentWithFile(
+      {
+        issueKey: "not-valid",
+        body: "Content",
+        filename: "report.md",
+        fileContent: "data",
+      },
+      mockConfig as never
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("Invalid input");
+  });
+
+  it("rejects filename without extension", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    const result = await handleAddCommentWithFile(
+      {
+        issueKey: "DNIEM-42",
+        body: "Content",
+        filename: "noextension",
+        fileContent: "data",
+      },
+      mockConfig as never
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("Invalid input");
+  });
+
+  it("falls back to append when inline placement but no {{ATTACHMENT}} placeholder", async () => {
+    const { handleAddCommentWithFile } = await import(
+      "../tools/add-comment-with-file.js"
+    );
+    vi.mocked(sessionManager.loadAndValidateSession).mockResolvedValue({
+      cookieHeader: "JSESSIONID=abc",
+    });
+    vi.spyOn(JiraHttpClient.prototype, "uploadAttachmentFromBuffer").mockResolvedValue([
+      { id: "80005", filename: "report.md", size: 100, mimeType: "text/markdown", url: null },
+    ]);
+    const commentSpy = vi
+      .spyOn(JiraHttpClient.prototype, "addComment")
+      .mockResolvedValue({
+        id: "90005",
+        issueKey: "DNIEM-42",
+        url: "https://jira.example.com/browse/DNIEM-42?focusedCommentId=90005",
+      });
+
+    await handleAddCommentWithFile(
+      {
+        issueKey: "DNIEM-42",
+        body: "No placeholder here",
+        bodyFormat: "plain",
+        filename: "report.md",
+        fileContent: "data",
+        attachmentPlacement: "inline",
+      },
+      mockConfig as never
+    );
+
+    const commentPayload = commentSpy.mock.calls[0]?.[1];
+    // Fallback: appended at end
+    expect(commentPayload?.body).toContain("[^report.md]");
+    expect(commentPayload?.body).toContain("📎");
+  });
+});
