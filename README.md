@@ -16,6 +16,7 @@ An internal MCP (Model Context Protocol) server for Jira 8, using SSO session bo
 - 💾 Persistent local session (Playwright storage state / cookies)
 - 🔍 `jira_get_issue` — fetch a single issue by key
 - 🔎 `jira_search_issues` — execute JQL and return a compact issue list
+- 🔎 `jira_smart_search` — search by issue key, JQL, or natural-language filters
 - ⏱️ `jira_add_worklog` — log work on a Jira issue through Tempo Timesheets
 - 📝 `jira_create_issue` — create an issue using issue-type-specific required and optional fields
 - 💬 `jira_add_comment` — add plain-text or ADF comments to an issue
@@ -246,6 +247,22 @@ Execute a JQL query and return a compact issue list.
 | `limit` | `number` | Max results (1–50, default 10) |
 
 **Output:** Total count + list of issues (key, summary, status, assignee, priority, updated, URL).
+
+---
+
+### `jira_smart_search`
+
+Search by issue key, explicit JQL, or natural-language filters.
+
+**Input:**
+| Field | Type | Description |
+|---|---|---|
+| `query` | `string` | Issue key, JQL, or natural-language text, e.g. `open bugs assigned to me` |
+| `mode` | `string` | Optional: `auto`, `jql`, or `smart` |
+| `project` | `string` | Optional Jira project key, e.g. `DNIEM` |
+| `limit` | `number` | Max results (1-50, default 10) |
+
+**Output:** Direct issue lookup or compact search results with generated/executed JQL.
 
 ---
 
@@ -737,6 +754,7 @@ src/
 │   ├── delete-comment.ts  # jira_delete_comment handler
 │   ├── delete-worklog.ts  # jira_delete_worklog handler
 │   ├── search-issues.ts   # jira_search_issues handler
+│   ├── smart-search.ts    # jira_smart_search handler
 │   ├── add-worklog.ts     # jira_add_worklog handler
 │   ├── transition-issue.ts # jira_transition_issue handler
 │   ├── update-comment.ts  # jira_update_comment handler

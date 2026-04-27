@@ -21,3 +21,10 @@ export function todayLocalDate(): string {
 export function navigationHint(...suggestions: string[]): string {
   return "\n\n---\n💡 **Next:** " + suggestions.join(" | ");
 }
+
+/**
+ * Escapes a value for use inside a quoted JQL string literal.
+ */
+export function escapeJqlString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}

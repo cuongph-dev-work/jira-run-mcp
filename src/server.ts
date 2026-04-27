@@ -33,6 +33,7 @@ import { handleGetTransitions } from "./tools/get-transitions.js";
 import { handleLinkIssues } from "./tools/link-issues.js";
 import { handlePreviewCreateIssue } from "./tools/preview-create-issue.js";
 import { handleSearchIssues } from "./tools/search-issues.js";
+import { handleSmartSearch, smartSearchToolSchema } from "./tools/smart-search.js";
 import { handleTransitionIssue } from "./tools/transition-issue.js";
 import { handleUpdateComment } from "./tools/update-comment.js";
 import { handleUpdateIssueFields } from "./tools/update-issue-fields.js";
@@ -200,6 +201,29 @@ DATE FORMATS: yyyy/MM/dd, period (-5d, -1w), date functions (startOfMonth(), end
     },
     async (input) => {
       return handleSearchIssues(input, config);
+    }
+  );
+
+  server.tool(
+    "jira_smart_search",
+    `Search Jira with an issue key, explicit JQL, or natural-language filters.
+
+AUTO MODE:
+- Issue key like DNIEM-42 returns a direct issue lookup.
+- Explicit JQL like project = DNIEM AND status = Open runs unchanged.
+- Natural text like "open bugs assigned to me updated last 7 days" is converted to safe JQL.
+
+SUPPORTED SMART FILTERS:
+- project: Jira project key, e.g. DNIEM
+- issue intent: bug/task/story/epic/sub-task
+- status intent: open/unresolved/done/closed/resolved/in progress/to do
+- assignee intent: assigned to me, my issues, unassigned
+- recency: updated last N days, created last N days
+- attachments: has pdf attachment
+- fallback text search: text ~ query`,
+    smartSearchToolSchema,
+    async (input) => {
+      return handleSmartSearch(input, config);
     }
   );
 

@@ -11,6 +11,7 @@ Last updated: 2026-04-24
 |--------|------|-------------|
 | [x] | `jira_get_issue` | Fetch full issue details by key |
 | [x] | `jira_search_issues` | Execute JQL query, return issue list |
+| [ ] | `jira_smart_search` | Search by issue key, JQL, or natural-language filters |
 | [x] | `jira_get_my_worklogs` | List authenticated user's Tempo worklogs |
 | [x] | `jira_get_transitions` | List available workflow transitions for an issue |
 | [x] | `jira_get_create_meta` | Return static create metadata for issue types |
