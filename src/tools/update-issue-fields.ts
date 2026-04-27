@@ -4,6 +4,7 @@ import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { buildUpdateIssuePayload } from "../jira/update-issue.js";
 import { normalizeJiraBody } from "../jira/body-normalizer.js";
+import { navigationHint } from "../utils.js";
 import { FIELD } from "../jira/constants.js";
 import type { Config } from "../config.js";
 
@@ -79,7 +80,9 @@ export async function handleUpdateIssueFields(
             `| **Issue** | ${issueKey} |`,
             `| **Updated Fields** | ${Object.keys(payload.fields).join(", ")} |`,
             `| **URL** | ${cfg.JIRA_BASE_URL.replace(/\/$/, "")}/browse/${issueKey} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_issue({issueKey: "${issueKey}"})\` to verify the updated fields`,
+          ),
         },
       ],
     };

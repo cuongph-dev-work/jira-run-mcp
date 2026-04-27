@@ -3,6 +3,7 @@ import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { normalizeJiraBody } from "../jira/body-normalizer.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 // ---------------------------------------------------------------------------
@@ -121,7 +122,9 @@ export async function handleAddComments(
   }
 
   return {
-    content: [{ type: "text", text: lines.join("\n") }],
+    content: [{ type: "text", text: lines.join("\n") + navigationHint(
+      `\`jira_get_comments({issueKey: "${issueKey}"})\` to view all comments`,
+    ) }],
     ...(hasError ? { isError: true } : {}),
   };
 }

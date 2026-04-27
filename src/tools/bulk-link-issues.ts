@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 const issueKeySchema = z.string().regex(/^[A-Z][A-Z0-9_]+-\d+$/, "issue key must be valid");
@@ -71,7 +72,9 @@ export async function handleBulkLinkIssues(
     ...rows,
   ];
 
-  return { content: [{ type: "text", text: lines.join("\n") }], isError: failures > 0 || undefined };
+  return { content: [{ type: "text", text: lines.join("\n") + navigationHint(
+    `\`jira_get_issue_links({issueKey: "<key>"})\` to verify links on any issue`,
+  ) }], isError: failures > 0 || undefined };
 }
 
 function errorContent(message: string) {

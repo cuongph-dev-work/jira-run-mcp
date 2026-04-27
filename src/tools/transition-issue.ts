@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import {
   assertSingleTransitionSelector,
   resolveTransitionIdByName,
@@ -100,7 +101,10 @@ export async function handleTransitionIssue(
             `| **Transition ID** | ${transition.id} |`,
             ...(transition.name ? [`| **Transition Name** | ${transition.name} |`] : []),
             `| **URL** | ${cfg.JIRA_BASE_URL.replace(/\/$/, "")}/browse/${parsed.data.issueKey} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_issue({issueKey: "${parsed.data.issueKey}"})\` to verify the new status`,
+            `\`jira_get_transitions({issueKey: "${parsed.data.issueKey}"})\` to see available next transitions`,
+          ),
         },
       ],
     };

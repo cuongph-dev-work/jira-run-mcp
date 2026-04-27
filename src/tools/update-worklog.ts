@@ -8,6 +8,7 @@ import {
 } from "../jira/constants.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { parseDuration } from "./add-worklog.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 import type { TempoWorkAttributeValue, TempoWorklogInput } from "../types.js";
 
@@ -82,7 +83,10 @@ export async function handleUpdateWorklog(
             `| **Issue** | ${worklog.issue?.key ?? "—"} |`,
             `| **Date** | ${worklog.startDate ?? "—"} |`,
             `| **Duration** | ${worklog.timeSpent ?? `${worklog.timeSpentSeconds}s`} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_my_worklogs()\` to verify the update`,
+            `\`jira_delete_worklog({worklogId: "${worklog.tempoWorklogId}"})\` to delete this worklog`,
+          ),
         },
       ],
     };

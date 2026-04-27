@@ -3,6 +3,7 @@ import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { normalizeAdfValue } from "../jira/adf.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import {
   assertSingleTransitionSelector,
   resolveTransitionIdByName,
@@ -115,7 +116,12 @@ export async function handleBulkTransitionIssues(
           `| Status | Issue | Transition ID | Transition Name | Result |`,
           `|---|---|---|---|---|`,
           ...rows,
-        ].join("\n"),
+        ].join("\n") + navigationHint(
+            ...(parsed.data.dryRun
+              ? [`Re-run with \`dryRun: false\` to apply the transitions`]
+              : [`\`jira_get_issue({issueKey: "<key>"})\` to verify the new status of any issue`]
+            ),
+          ),
       },
     ],
     ...(failures > 0 ? { isError: true as const } : {}),

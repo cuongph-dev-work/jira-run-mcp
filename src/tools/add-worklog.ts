@@ -7,7 +7,7 @@ import {
   TEMPO_TYPE_OF_WORK,
 } from "../jira/constants.js";
 import { isMcpError, McpError } from "../errors.js";
-import { todayLocalDate } from "../utils.js";
+import { todayLocalDate, navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 import type { TempoWorkAttributeValue } from "../types.js";
 
@@ -309,7 +309,11 @@ function formatWorklogResult(
     lines.push(`| **Jira Worklog ID** | ${wl.jiraWorklogId} |`);
   }
 
-  return lines.join("\n");
+  return lines.join("\n") + navigationHint(
+    `\`jira_get_my_worklogs()\` to see your recent worklogs`,
+    `\`jira_update_worklog({worklogId: "${wl.tempoWorklogId}", timeSpent: "..."})\` to update`,
+    `\`jira_delete_worklog({worklogId: "${wl.tempoWorklogId}"})\` to delete`,
+  );
 }
 
 // ---------------------------------------------------------------------------

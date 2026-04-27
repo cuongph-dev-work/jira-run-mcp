@@ -3,6 +3,7 @@ import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { buildUpdateIssuePayload } from "../jira/update-issue.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 const issueKeySchema = z
@@ -77,7 +78,12 @@ export async function handleBulkUpdateIssueFields(
           `| Status | Issue | Fields | Result |`,
           `|---|---|---|---|`,
           ...rows,
-        ].join("\n"),
+        ].join("\n") + navigationHint(
+          ...(parsed.data.dryRun
+            ? [`Re-run with \`dryRun: false\` to apply the field updates`]
+            : [`\`jira_get_issue({issueKey: "<key>"})\` to verify updated fields on any issue`]
+          ),
+        ),
       },
     ],
     ...(failures > 0 ? { isError: true as const } : {}),

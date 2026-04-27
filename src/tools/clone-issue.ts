@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const cloneIssueSchema = z.object({
@@ -47,7 +48,10 @@ export async function handleCloneIssue(
             `| **Source** | ${parsed.data.sourceIssueKey} |`,
             `| **Clone** | ${created.key} |`,
             `| **URL** | ${created.url} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_issue({issueKey: "${created.key}"})\` to view the cloned issue`,
+            `\`jira_update_issue_fields({issueKey: "${created.key}", fields: {...}})\` to customize fields`,
+          ),
         },
       ],
     };

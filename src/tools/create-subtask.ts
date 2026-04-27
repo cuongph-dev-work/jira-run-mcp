@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const createSubtaskSchema = z.object({
@@ -47,7 +48,10 @@ export async function handleCreateSubtask(
             `| **Parent** | ${parsed.data.parentIssueKey} |`,
             `| **Subtask** | ${created.key} |`,
             `| **URL** | ${created.url} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_issue({issueKey: "${created.key}"})\` to view the subtask`,
+            `\`jira_get_subtasks({issueKey: "${parsed.data.parentIssueKey}"})\` to see all subtasks`,
+          ),
         },
       ],
     };

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
-import { todayLocalDate } from "../utils.js";
+import { todayLocalDate, navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -70,7 +70,12 @@ export async function handleGetMyWorklogs(
       }
     }
 
-    return { content: [{ type: "text", text: lines.join("\n") }] };
+    const hint = navigationHint(
+      `\`jira_add_worklog({issueKey: "<key>", timeSpent: "1h"})\` to log time`,
+      `\`jira_update_worklog({worklogId: "<id>", timeSpent: "2h"})\` to update a worklog`,
+      `\`jira_delete_worklog({worklogId: "<id>"})\` to delete a worklog`,
+    );
+    return { content: [{ type: "text", text: lines.join("\n") + hint }] };
   } catch (err: unknown) {
     if (isMcpError(err)) return errorContent(`[${err.code}] ${err.message}`);
     if (err instanceof Error) return errorContent(err.message);

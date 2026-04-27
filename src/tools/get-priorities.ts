@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const getPrioritiesSchema = z.object({});
@@ -35,7 +36,11 @@ export async function handleGetPriorities(
     for (const priority of priorities) {
       lines.push(`| ${priority.id} | ${priority.name} | ${priority.description ?? "—"} |`);
     }
-    return { content: [{ type: "text", text: lines.join("\n") }] };
+    const hint = navigationHint(
+      `\`jira_create_issue({..., fields: {priority: {name: "<name>"}}})\` to create an issue with this priority`,
+      `\`jira_update_issue_fields({issueKey: "<key>", fields: {priority: {name: "<name>"}}})\` to change priority`,
+    );
+    return { content: [{ type: "text", text: lines.join("\n") + hint }] };
   } catch (err: unknown) {
     if (isMcpError(err)) return errorContent(`[${err.code}] ${err.message}`);
     if (err instanceof Error) return errorContent(err.message);

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const assignIssueSchema = z.object({
@@ -58,7 +59,9 @@ export async function handleAssignIssue(
             `| **Issue** | ${parsed.data.issueKey} |`,
             `| **Assignee** | ${parsed.data.assigneeName ?? parsed.data.assigneeKey} |`,
             `| **URL** | ${cfg.JIRA_BASE_URL.replace(/\/$/, "")}/browse/${parsed.data.issueKey} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_issue({issueKey: "${parsed.data.issueKey}"})\` to verify the assignment`,
+          ),
         },
       ],
     };

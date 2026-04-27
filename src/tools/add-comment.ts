@@ -3,6 +3,7 @@ import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { normalizeJiraBody } from "../jira/body-normalizer.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const addCommentSchema = z.object({
@@ -54,7 +55,9 @@ export async function handleAddComment(
             `| **Issue** | ${comment.issueKey} |`,
             `| **Comment ID** | ${comment.id} |`,
             `| **URL** | ${comment.url} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_comments({issueKey: "${comment.issueKey}"})\` to view all comments`,
+          ),
         },
       ],
     };

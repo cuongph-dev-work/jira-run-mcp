@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ISSUE_TYPE } from "../jira/constants.js";
 import { buildCreateMeta } from "../jira/create-meta.js";
+import { navigationHint } from "../utils.js";
 
 export const getCreateMetaSchema = z.object({
   issueTypeId: z.nativeEnum(ISSUE_TYPE).optional(),
@@ -20,7 +21,10 @@ export async function handleGetCreateMeta(
     content: [
       {
         type: "text",
-        text: formatCreateMeta(meta),
+        text: formatCreateMeta(meta) + navigationHint(
+          `\`jira_preview_create_issue({issueTypeId: "<id>", fields: {...}})\` to preview the payload`,
+          `\`jira_create_issue({issueTypeId: "<id>", fields: {...}})\` to create an issue`,
+        ),
       },
     ],
   };

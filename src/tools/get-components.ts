@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const getComponentsSchema = z.object({
@@ -44,7 +45,11 @@ export async function handleGetComponents(
     for (const component of components) {
       lines.push(`| ${component.id} | ${component.name} | ${component.description ?? "—"} |`);
     }
-    return { content: [{ type: "text", text: lines.join("\n") }] };
+    const hint = navigationHint(
+      `\`jira_create_issue({...})\` to create an issue in project ${parsed.data.projectKey}`,
+      `\`jira_update_issue_fields({issueKey: "<key>", fields: {components: [...]}})\` to update components`,
+    );
+    return { content: [{ type: "text", text: lines.join("\n") + hint }] };
   } catch (err: unknown) {
     if (isMcpError(err)) return errorContent(`[${err.code}] ${err.message}`);
     if (err instanceof Error) return errorContent(err.message);

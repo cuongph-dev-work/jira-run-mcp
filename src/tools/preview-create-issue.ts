@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { FIELD, ISSUE_TYPE, type IssueTypeId } from "../jira/constants.js";
 import { buildCreateIssuePayload } from "../jira/create-issue.js";
+import { navigationHint } from "../utils.js";
 
 export const previewCreateIssueSchema = z.object({
   issueTypeId: z.nativeEnum(ISSUE_TYPE),
@@ -36,7 +37,9 @@ export async function handlePreviewCreateIssue(
             "```json",
             JSON.stringify(payload, null, 2),
             "```",
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_create_issue({issueTypeId: "${issueTypeId}", fields: {...}})\` to execute the creation`,
+          ),
         },
       ],
     };

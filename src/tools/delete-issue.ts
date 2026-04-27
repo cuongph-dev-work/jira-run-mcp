@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const deleteIssueSchema = z.object({
@@ -61,7 +62,9 @@ export async function handleDeleteIssue(
             `| **Subtasks deleted** | ${parsed.data.deleteSubtasks ? "Yes" : "No"} |`,
             "",
             subtaskNote,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_search_issues({jql: "project = <KEY> ORDER BY created DESC"})\` to see remaining issues`,
+          ),
         },
       ],
     };

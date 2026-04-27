@@ -10,6 +10,7 @@ import {
   MAX_IMAGE_SIZE,
 } from "../jira/attachment-reader.js";
 import { isMcpError } from "../errors.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 import type { JiraIssue, JiraAttachment } from "../types.js";
 
@@ -365,6 +366,15 @@ function formatIssue(issue: JiraIssue): string {
   lines.push(`## Description`);
   lines.push(``);
   lines.push(issue.description ?? "_No description provided._");
+
+  // ── Navigation ───────────────────────────────────────────────────────────
+  lines.push(navigationHint(
+    `\`jira_get_comments({issueKey: "${issue.key}"})\` for comments`,
+    `\`jira_get_subtasks({issueKey: "${issue.key}"})\` for subtasks`,
+    `\`jira_get_issue_links({issueKey: "${issue.key}"})\` for links`,
+    `\`jira_get_transitions({issueKey: "${issue.key}"})\` to change status`,
+    `\`jira_add_worklog({issueKey: "${issue.key}"})\` to log time`,
+  ));
 
   return lines.join("\n");
 }

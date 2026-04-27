@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const linkIssuesSchema = z.object({
@@ -65,7 +66,10 @@ export async function handleLinkIssues(
             `| **Outward Issue** | ${parsed.data.outwardIssueKey} |`,
             `| **Link Type** | ${parsed.data.linkType} |`,
             `| **Link ID** | ${result.linkId} |`,
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            `\`jira_get_issue_links({issueKey: "${parsed.data.inwardIssueKey}"})\` to verify the link`,
+            `\`jira_get_issue({issueKey: "${parsed.data.outwardIssueKey}"})\` to view the linked issue`,
+          ),
         },
       ],
     };

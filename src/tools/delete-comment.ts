@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const deleteCommentSchema = z.object({
@@ -38,7 +39,9 @@ export async function handleDeleteComment(
       content: [
         {
           type: "text",
-          text: `✅ **Comment deleted**\n\n| Field | Value |\n|---|---|\n| **Issue** | ${parsed.data.issueKey} |\n| **Comment ID** | ${parsed.data.commentId} |`,
+          text: `✅ **Comment deleted**\n\n| Field | Value |\n|---|---|\n| **Issue** | ${parsed.data.issueKey} |\n| **Comment ID** | ${parsed.data.commentId} |` + navigationHint(
+            `\`jira_get_comments({issueKey: "${parsed.data.issueKey}"})\` to verify the deletion`,
+          ),
         },
       ],
     };

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const findUserSchema = z.object({
@@ -48,7 +49,10 @@ export async function handleFindUser(
       }
     }
 
-    return { content: [{ type: "text", text: lines.join("\n") }] };
+    const hint = navigationHint(
+      `\`jira_assign_issue({issueKey: "<key>", assigneeKey: "<key>"})\` to assign an issue to a found user`,
+    );
+    return { content: [{ type: "text", text: lines.join("\n") + hint }] };
   } catch (err: unknown) {
     if (isMcpError(err)) return errorContent(`[${err.code}] ${err.message}`);
     if (err instanceof Error) return errorContent(err.message);

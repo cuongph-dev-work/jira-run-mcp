@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { invalidInput, isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 // ---------------------------------------------------------------------------
@@ -97,7 +98,9 @@ export async function handleUploadAttachmentContent(
       `**Issue:** ${cfg.JIRA_BASE_URL.replace(/\/$/, "")}/browse/${issueKey}`
     );
 
-    return { content: [{ type: "text", text: lines.join("\n") }] };
+    return { content: [{ type: "text", text: lines.join("\n") + navigationHint(
+      `\`jira_get_issue({issueKey: "${issueKey}", includeAttachmentContent: true})\` to view attachments`,
+    ) }] };
   } catch (err: unknown) {
     if (isMcpError(err)) return errorContent(`[${err.code}] ${err.message}`);
     if (err instanceof Error) return errorContent(err.message);

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const getSubtasksSchema = z.object({
@@ -47,7 +48,11 @@ export async function handleGetSubtasks(
       }
     }
 
-    return { content: [{ type: "text", text: lines.join("\n") }] };
+    const hint = navigationHint(
+      `\`jira_get_issue({issueKey: "<subtask-key>"})\` for full subtask details`,
+      `\`jira_create_subtask({parentIssueKey: "${parsed.data.issueKey}"})\` to add a subtask`,
+    );
+    return { content: [{ type: "text", text: lines.join("\n") + hint }] };
   } catch (err: unknown) {
     if (isMcpError(err)) return errorContent(`[${err.code}] ${err.message}`);
     if (err instanceof Error) return errorContent(err.message);

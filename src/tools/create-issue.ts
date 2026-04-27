@@ -12,6 +12,7 @@ import {
   buildCreateIssueResult,
 } from "../jira/create-issue.js";
 import { normalizeJiraBody } from "../jira/body-normalizer.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const createIssueSchema = z.object({
@@ -119,7 +120,12 @@ function formatCreatedIssue(issue: {
     `**Summary:** ${issue.summary}`,
     `**Type:** ${issue.issueType}`,
     `**URL:** ${issue.url}`,
-  ].join("\n");
+  ].join("\n") + navigationHint(
+    `\`jira_get_issue({issueKey: "${issue.key}"})\` to view the full issue`,
+    `\`jira_add_comment({issueKey: "${issue.key}", body: "..."})\` to add a comment`,
+    `\`jira_link_issues({inwardIssueKey: "${issue.key}", outwardIssueKey: "<key>", linkType: "<type>"})\` to link issues`,
+    `\`jira_add_attachment({issueKey: "${issue.key}", filePath: "..."})\` to attach a file`,
+  );
 }
 
 function errorContent(message: string) {

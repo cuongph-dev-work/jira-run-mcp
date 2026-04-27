@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const deleteWorklogSchema = z.object({
@@ -37,7 +38,9 @@ export async function handleDeleteWorklog(
       content: [
         {
           type: "text",
-          text: `✅ **Worklog deleted**\n\n| Field | Value |\n|---|---|\n| **Tempo ID** | ${parsed.data.worklogId} |`,
+          text: `✅ **Worklog deleted**\n\n| Field | Value |\n|---|---|\n| **Tempo ID** | ${parsed.data.worklogId} |` + navigationHint(
+            `\`jira_get_my_worklogs()\` to verify the deletion`,
+          ),
         },
       ],
     };

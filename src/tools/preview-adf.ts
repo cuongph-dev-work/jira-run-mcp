@@ -4,6 +4,7 @@ import {
   type JiraBodyFormat,
 } from "../jira/body-normalizer.js";
 import { isAdfDocument } from "../jira/adf.js";
+import { navigationHint } from "../utils.js";
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -62,7 +63,11 @@ export async function handlePreviewAdf(
 
   lines.push("", "### ADF JSON", "```json", JSON.stringify(adfDoc, null, 2), "```");
 
-  return { content: [{ type: "text", text: lines.join("\n") }] };
+  return { content: [{ type: "text", text: lines.join("\n") + navigationHint(
+    `\`jira_add_comment({issueKey: "<key>", body: <adf_json>, bodyFormat: "adf"})\` to post as a comment`,
+    `\`jira_create_issue({..., fields: {description: <adf_json>}})\` to use as issue description`,
+    `\`jira_update_issue_fields({issueKey: "<key>", fields: {description: <adf_json>}, bodyFormat: "adf"})\` to update description`,
+  ) }] };
 }
 
 // ---------------------------------------------------------------------------

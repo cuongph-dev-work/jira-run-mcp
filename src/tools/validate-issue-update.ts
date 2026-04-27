@@ -3,6 +3,7 @@ import { loadAndValidateSession } from "../auth/session-manager.js";
 import { isMcpError } from "../errors.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { buildUpdateIssuePayload } from "../jira/update-issue.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 
 export const validateIssueUpdateSchema = z.object({
@@ -67,7 +68,12 @@ export async function handleValidateIssueUpdate(
             "```json",
             JSON.stringify(payload, null, 2),
             "```",
-          ].join("\n"),
+          ].join("\n") + navigationHint(
+            ...(nonEditable.length === 0
+              ? [`\`jira_update_issue_fields({issueKey: "${parsed.data.issueKey}", fields: {...}})\` to apply the update`]
+              : [`\`jira_get_edit_meta({issueKey: "${parsed.data.issueKey}"})\` to see which fields are editable`]
+            ),
+          ),
         },
       ],
       ...(nonEditable.length > 0 ? { isError: true as const } : {}),

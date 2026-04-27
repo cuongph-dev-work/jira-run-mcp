@@ -795,10 +795,28 @@ npm run build
 npm run dev
 ```
 
-> `npm run dev` runs the server via `tsx` with stdio — useful for testing with MCP Inspector:
-> ```bash
-> npx @modelcontextprotocol/inspector node dist/server.js
-> ```
+### Testing with MCP Inspector
+
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector) is the official GUI tool for interactively testing MCP servers — call tools, inspect inputs/outputs, and debug without an AI client.
+
+**Option A — dev mode (no build required):**
+
+```bash
+npx @modelcontextprotocol/inspector tsx src/server.ts
+```
+
+`tsx` compiles TypeScript on-the-fly. Changes are picked up on every Inspector session restart without a rebuild step.
+
+**Option B — built bundle:**
+
+```bash
+npm run build
+npx @modelcontextprotocol/inspector node dist/server.js
+```
+
+Both options read the `.env` file in the project root automatically.
+
+After the Inspector starts, open the URL it prints (usually `http://localhost:5173`) in your browser, select a tool from the sidebar, fill in the inputs, and click **Run**.
 
 ## Error Codes
 

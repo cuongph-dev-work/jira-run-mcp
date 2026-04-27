@@ -2,6 +2,7 @@ import { z } from "zod";
 import { loadAndValidateSession } from "../auth/session-manager.js";
 import { JiraHttpClient } from "../jira/http-client.js";
 import { isMcpError } from "../errors.js";
+import { navigationHint } from "../utils.js";
 import type { Config } from "../config.js";
 import type { JiraIssueSummary } from "../types.js";
 
@@ -210,7 +211,14 @@ function formatSearchResult(
     return lines.join("\n");
   });
 
-  return [...header, ...rows].join("\n\n");
+  const nextSuggestions: string[] = [
+    "`jira_get_issue({issueKey: \"<key>\"})` for full issue details",
+  ];
+  if (to < total) {
+    nextSuggestions.push(`\`jira_search_issues({jql: "${jql}", startAt: ${to}})\` for next page`);
+  }
+
+  return [...header, ...rows].join("\n\n") + navigationHint(...nextSuggestions);
 }
 
 function errorContent(message: string) {
